@@ -1,0 +1,687 @@
+/* --- Tema generale --- */
+:root {
+  --accent: #b05cff10;
+  --glass-dark: rgba(0, 0, 0, 0.25);
+  --glass-light: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(36, 36, 36, 0.192);
+  --border-dark: rgba(0, 0, 0, 0.2);
+}
+
+/* --- Corpo pagina --- */
+body {
+  background: #111; /* Cambia dinamicamente con JS */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  font-family: "Poppins", system-ui, sans-serif;
+  color: white;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  transition: background-color 1s ease;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* --- Effetti vetrosi --- */
+.glass {
+  background: var(--glass-light);
+  border: 2px solid var(--border-light);
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+
+/* --- Layout principale --- */
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- Area di ricerca --- */
+
+.hidden-search {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height 0.5s ease, opacity 0.4s ease;
+}
+
+.hidden-search.show {
+  max-height: 1000px; /* abbastanza per mostrare tutto */
+  opacity: 1;
+  pointer-events: auto;
+}
+.search-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  margin-top: 16px;
+  width: 80%;
+  max-width: 600px;
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  background: var(--glass-dark);
+  border: 2px solid var(--border-dark);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.384);
+}
+
+/* === Contenitore principale === */
+.search-area .actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* === Riga principale: input + colonna bottoni === */
+.search-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Colonna con i 2 pulsanti */
+.button-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* === Input === */
+.search-area input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(160, 160, 160, 0.466);
+  background: rgba(49, 49, 49, 0.233);
+  color: white;
+  outline: none;
+}
+
+.search-area input::placeholder {
+  color: #bbb;
+}
+
+/* === Bottoni === */
+.search-area button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.search-area button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px var(--accent-hover);
+}
+
+/* === Bottone 3 pallini === */
+.dots-btn {
+  width: 38px;
+  height: 38px;
+  align-self: center;
+  border-radius: 50%;
+  font-size: 20px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* === Sezione aggiungi per URL === */
+.hidden-link {
+  display: none;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+}
+
+.hidden-link.show {
+  display: flex;
+}
+
+/* === Contenitore risultati === */
+.results-container {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.results-container::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* --- Risultati --- */
+.results-container {
+  width: 100%;
+  max-height: 370px;
+  overflow-y: auto;
+  border-radius: 16px;
+  padding: 10px;
+
+}
+
+.results-container ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.results-container li {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+/* --- Player Card --- */
+#playerCard {
+  width: 70%;
+  max-width: 500px;
+  padding: 24px;
+  border-radius: 25px;
+  background: var(--glass-dark);
+  border: 2px solid var(--border-dark);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  transition: background 0.4s ease;
+}
+
+#player {
+  width: 90%;
+  height: 50%;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+#player iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* --- Controlli --- */
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 18px;
+
+}
+
+.controls button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: white;
+  font-size: 1.4em;
+  cursor: pointer;
+
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+
+
+#play {
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, #ff4d9d00, #b0006100);
+}
+
+/* --- Playlist --- */
+aside.right {
+  width: 93%;
+  max-width: 700px;
+  padding: 16px;
+  margin-bottom: 40px;
+  border-radius: 25px;
+  background: var(--glass-dark);
+  border: 2px solid var(--border-dark);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+}
+
+aside.right h2 {
+  margin-top: 0;
+}
+
+/* --- Pulsanti playlist --- */
+.playlist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  background-color: transparent;
+}
+
+.playlist-actions button,
+#createPlaylistBtn {
+  flex: 1 1 auto;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.playlist-actions button:hover,
+#createPlaylistBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
+}
+
+
+#importFixedBtn {
+  flex: 1 1 auto;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+/* ================================
+   🎵 SEZIONE PLAYLIST
+==================================*/
+
+/* Header: titolo a sinistra, icona a destra */
+.playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5%;
+  margin-top: 4%;
+
+}
+
+.playlist-header h2 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: white;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+
+/* Lista playlist scrollabile */
+#playlistList {
+  width: 100%;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 330px;
+  overflow-y: auto;
+}
+
+/* Singolo elemento playlist */
+#playlistList li.item {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* spaziatura uniforme tra immagine e testo */
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  position: relative;
+  cursor: pointer;
+}
+
+/* Rimuove l’ultima linea */
+#playlistList li.item:last-child {
+  border-bottom: none;
+}
+
+/* Miniatura */
+#playlistList li.item img {
+  width: 85px;
+  height: 65px;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-left: -4px; /* 👈 sposta leggermente a sinistra per bilanciare */
+}
+
+/* Testo accanto all’immagine */
+#playlistList li.item .title {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+/* Contenuto testuale */
+.center-content {
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: center;
+  flex: 0.84; /* occupa tutto lo spazio disponibile */
+}
+
+.center-content .scrolling-title {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: white;
+  transform: translateX(0);
+  animation: bounceScroll 8s ease-in-out infinite alternate;
+}
+
+.center-content .index-label {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+
+/* Pulsante X posizionato a destra */
+.btns {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.btns button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+
+
+/* ================================
+   🔍 SEZIONE RISULTATI
+==================================*/
+
+#resultsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#resultsList li.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+#resultsList li.item:last-child {
+  border-bottom: none;
+}
+
+#resultsList li.item img {
+  width: 100px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Contenitore testo nei risultati */
+#resultsList .text {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+#resultsList .scrolling-title {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  animation: bounceScroll 6s ease-in-out infinite alternate;
+}
+
+/* ================================
+   ✨ ANIMAZIONE COMUNE
+==================================*/
+
+@keyframes bounceScroll {
+  0% { transform: translateX(10%); }
+  100% { transform: translateX(-10%); }
+}
+
+/* Disabilita animazione in orizzontale */
+@media (orientation: landscape) {
+  .center-content .scrolling-title {
+    animation: none;
+  }
+}
+
+/* --- Titoli --- */
+h2 {
+  text-align: center;
+  color: white;
+  margin-bottom: 8px;
+}
+
+
+
+
+/* 🔹 Bottone icona piccolo */
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.icon-btn:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
+}
+
+/* 🔹 Nasconde i bottoni */
+.hidden {
+  display: none;
+}
+
+/* 🔹 Layout più pulito per header playlist */
+.playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+#playlistOverlay {
+  position: fixed;
+  inset: 0; /* top:0 left:0 right:0 bottom:0 */
+  background: rgba(0,0,0,0.7);
+  color: white;
+  z-index: 99;
+  display: none; /* nascosto di default */
+  backdrop-filter: blur(10px);
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Classe per mostrare */
+#playlistOverlay.active {
+  display: block;
+}
+
+/* === CONTENUTO CENTRATO === */
+#playlistOverlay .overlay-content {
+  width: 87%;
+  max-width: 700px;
+  max-height: 85vh;
+  background: rgba(20,20,20,0.92);
+  border-radius: 25px;
+  padding: 30px;
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: 0 6px 30px rgba(0,0,0,0.5);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 30px;
+  overflow-y: auto;
+  animation: fadeIn 0.25s ease;
+}
+
+/* Pulsante chiudi in alto a destra dentro overlay-content */
+#closePlaylistOverlay {
+  margin-top: 20px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s;
+  align-self: center;
+}
+
+
+
+
+/* Stile bottoni interni */
+.playlist-actions button,
+#importFixedBtn,
+#gotoHighlightsBtn {
+  margin: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: white;
+  cursor: pointer;
+}
+
+/* Optional: rende l'overlay-content più “coerente” con #playerCard */
+.overlay-content {
+  transition: background 0.25s ease, transform 0.18s ease;
+}
+
+/* Effetto fade in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- Responsività --- */
+@media (max-width: 768px) {
+  main {
+    padding: 20px;
+  }
+
+  #playerCard,
+  aside.right {
+    width: 87%;
+  }
+
+  .controls button {
+    width: 55px;
+    height: 55px;
+
+  }
+
+  #play {
+    width: 65px;
+    height: 65px;
+  }
+}
+
+
+#volume {
+  accent-color: #ff4444; /* colore principale */
+  cursor: pointer;
+  height: 4px;
+  border-radius: 8px;
+}
+
+
+#gotoHighlightsBtn {
+  background: linear-gradient(135deg, #ff8800, #ffbb33);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-left: 10px;
+}
+
+#gotoHighlightsBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #ffbb33;
+}
+
+ #playlistOverlay .overlay-content {
+    width: 94%;
+    margin: 4vh auto;
+    padding: 16px;
+    border-radius: 16px;
+    overflow-y: scroll;
+  }
+  #closePlaylistOverlay {
+    right: 18px;
+    top: 18px;
+  }
+
+  /* Stile generale del box */
+#Popup_selezione {
+    background: rgba(29, 29, 29, 0.12);
+    color: #fff;
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    max-width: 300px;
+    width: 90%;
+    max-height: 70vh;
+    box-shadow: 0 4px 20px rgba(34, 34, 34, 0.3);
+    text-align: center;
+    overflow-y: auto;      /* scroll abilitato */
+    scrollbar-width: none; /* Firefox */
+}
+
+#Popup_selezione::-webkit-scrollbar {  /* Chrome, Edge, Safari */
+    display: none; 
+}
+
+/* Stile del titolo */
+#Popup_selezione-title {
+    margin-bottom: 1rem;
+    color: #c00;
+}

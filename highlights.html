@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GameTime Highlights</title>
+
+  <link rel="stylesheet" href="styleshigh.css" />
+
+  <meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self' https://www.youtube.com https://www.googleapis.com;
+        frame-src https://www.youtube.com https://www.youtube-nocookie.com;
+        img-src 'self' https://i.ytimg.com https://yt3.ggpht.com data:;
+        connect-src 'self' https://www.googleapis.com;
+        style-src 'self' 'unsafe-inline';
+      ">
+</head>
+<body>
+<main>
+  <div id="playerCard" class="card">
+    <div id="player"></div>
+    <div class="controls">
+      <button id="prev">&#x23EE;</button>
+      <button id="play">&#x23F8;</button>
+      <button id="next">&#x23ED;</button>
+    </div>
+    <input id="volume" type="range" min="0" max="100" value="50" style="width:100px; margin-left:10px;" />
+  </div>
+
+  <aside class="right card">
+    <div class="playlist-header">
+      <h2>Playlist</h2>
+    </div>
+    <ul id="playlistList"></ul>
+  </aside>
+
+  <button id="importChannelBtn">🏀</button>
+</main>
+<button id="gotoYTBtn">🎬</button>
+
+
+
+
+<script src="https://www.youtube.com/iframe_api" async></script>
+
+<script src="highlights.js"></script>
+<script src="animation1.js"></script>
+</body>
+</html>
