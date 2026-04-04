@@ -255,17 +255,45 @@ function clearPlaylist(){
   renderPlaylist();
 }
 
+function shufflePlaylist() {
+  if (playlist.length <= 1) return;
+
+  // 1. Memorizziamo l'ID del brano in riproduzione per non perdere il segno
+  const currentId = playlist[currentIndex] ? playlist[currentIndex].id : null;
+
+  // 2. Algoritmo di Fisher-Yates per mischiare l'array 'playlist'
+  for (let i = playlist.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [playlist[i], playlist[j]] = [playlist[j], playlist[i]];
+  }
+
+  // 3. Riposizioniamo currentIndex sul brano che era attivo
+  if (currentId) {
+    currentIndex = playlist.findIndex(p => p.id === currentId);
+  }
+
+  // 4. Salviamo la coda rimescolata nel localStorage con il nome corretto
+  localStorage.setItem('mytube_playlist', JSON.stringify(playlist));
+
+  renderPlaylist();
+}
+
 // --- Event binding ---
 document.addEventListener('DOMContentLoaded', () => {
   const createBtn = document.getElementById('createPlaylistBtn');
   const saveBtn = document.getElementById('saveLocal');
   const loadBtn = document.getElementById('loadLocal');
   const clearBtn = document.getElementById('clearPlaylist');
+  const shuffleBtn = document.getElementById('shuffleBtn');
+  const randomizerBtn = document.getElementById('randomizerBtn');
 
   if (createBtn) createBtn.addEventListener('click', createPlaylistFromPrompt);
   if (saveBtn) saveBtn.addEventListener('click', savePlaylist);
   if (loadBtn) loadBtn.addEventListener('click', loadPlaylistFromLocal);
   if (clearBtn) clearBtn.addEventListener('click', clearPlaylist);
+  if (shuffleBtn) shuffleBtn.addEventListener('click', shufflePlaylist);
+  if (randomizerBtn) randomizerBtn.addEventListener('click', openRandomizerSelector);
+
 });
 
 // --- Helper HTML escape ---
@@ -375,6 +403,125 @@ function loadPlaylistFromSelection() {
   document.body.appendChild(overlay);
 }
 
+function openRandomizerSelector() {
+  const allKeys = Object.keys(localStorage);
+  
+  // 1. Identifichiamo le playlist valide
+  const playlistKeys = allKeys.filter(k => {
+    if (k === 'yt_key_suffix' || k === 'mytube_playlist') return false;
+    try {
+      return Array.isArray(JSON.parse(localStorage.getItem(k)));
+    } catch { return false; }
+  });
+
+  if (playlistKeys.length === 0) {
+    alert("❌ Nessuna playlist salvata trovata.");
+    return;
+  }
+
+  // 2. Creazione Overlay (stile MyTube)
+  const overlay = document.createElement('div');
+  overlay.id = 'randomizerOverlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.8)',
+    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: '2000'
+  });
+
+  const box = document.createElement('div');
+  box.id = 'Popup_selezione'; // Uso il tuo ID per mantenere lo stile CSS
+  box.style.maxHeight = '80vh';
+  box.style.overflowY = 'auto';
+
+  const title = document.createElement('h3');
+  title.textContent = "Seleziona le sorgenti per il Mix:";
+  title.style.color = "white";
+  box.appendChild(title);
+
+  // Contenitore per le opzioni
+  const listContainer = document.createElement('div');
+  listContainer.style.margin = "1.5rem 0";
+
+  // 3. Creiamo le righe con checkbox
+  const selectedKeys = [];
+
+  playlistKeys.forEach(k => {
+    const label = document.createElement('label');
+    Object.assign(label.style, {
+      display: 'flex', alignItems: 'center', gap: '10px', padding: '10px',
+      background: '#35353570', margin: '5px 0', borderRadius: '5px', cursor: 'pointer', color: 'white'
+    });
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = k;
+    cb.checked = true; // Di default le selezioniamo tutte
+
+    label.appendChild(cb);
+    label.append(k);
+    listContainer.appendChild(label);
+  });
+  box.appendChild(listContainer);
+
+  // 4. Bottone Genera
+  const genBtn = document.createElement('button');
+  genBtn.textContent = "🎲 Genera Mix Casuale";
+  Object.assign(genBtn.style, {
+    width: '100%', padding: '12px', background: '#e62117', color: 'white',
+    border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
+  });
+
+  genBtn.addEventListener('click', () => {
+    // Recupera solo le chiavi spuntate
+    const checked = Array.from(box.querySelectorAll('input[type="checkbox"]:checked')).map(c => c.value);
+    
+    if (checked.length === 0) return alert("Seleziona almeno una playlist!");
+
+    runSmartRandomizer(checked); // Esegue il mix
+    overlay.remove();
+  });
+
+  // 5. Bottone Annulla
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = "Annulla";
+  Object.assign(cancelBtn.style, {
+    width: '100%', marginTop: '10px', padding: '8px', background: 'transparent',
+    color: '#aaa', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer'
+  });
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  box.appendChild(genBtn);
+  box.appendChild(cancelBtn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+// La funzione core che elabora i dati
+function runSmartRandomizer(targetKeys) {
+  let newRandomCoda = [];
+
+  targetKeys.forEach(key => {
+    const data = JSON.parse(localStorage.getItem(key));
+    if (data.length > 0) {
+      // Peschiamo un numero casuale di brani (da 2 a 6)
+      const numToExtract = Math.min(data.length, Math.floor(Math.random() * 11) + 10);
+      const shuffledSrc = [...data].sort(() => 0.5 - Math.random());
+      newRandomCoda = [...newRandomCoda, ...shuffledSrc.slice(0, numToExtract)];
+    }
+  });
+
+  // Mischia finale (Fisher-Yates)
+  for (let i = newRandomCoda.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newRandomCoda[i], newRandomCoda[j]] = [newRandomCoda[j], newRandomCoda[i]];
+  }
+
+  playlist = newRandomCoda;
+  currentIndex = 0;
+  savePlaylistToTemp();
+  renderPlaylist();
+  
+  alert(`🔀 Mix creato: ${playlist.length} brani estratti.`);
+}
 // Aggiunge listener al bottone “Carica locale”
 document.addEventListener('DOMContentLoaded', () => {
   const loadLocalBtn = document.getElementById('loadLocal');

@@ -1,21 +1,32 @@
 // youtube-api.js
 let API_KEY = null;
 
-const API_KEY_ = 'AIzaSyDV7syNvSBF_zpYwKypFcEmZHyzhd20q';
+// Parte fissa della chiave (Assicurati che questa sia corretta!)
+const API_KEY_ = 'AIzaSyCC4GXA3zQV8ybRS337XVP1jISvrcp';
 
-
+// API KEY init
 window.addEventListener('load', () => {
-  const last = localStorage.getItem('yt_key_suffix') || prompt("Password 9c: X V(min)");
-  if (last && /^[A-Za-z0-9_-]{2}$/.test(last)) {
-    API_KEY = API_KEY_ + last;
-    localStorage.setItem('yt_key_suffix', last);
-  } else {
-    alert(" sei sCemo? ");
-  }
-});
-const MAX_RESULTS = 20;
-const MAX_RESULTS_PLAYLIST = 50; // Nuovo limite per playlist
+    // Recupera il suffisso salvato o lo chiede all'utente
+    let last = localStorage.getItem('yt_key_suffix');
 
+    if (!last) {
+        last = prompt("Inserisci il suffisso della API Key:");
+    }
+    // Controllo semplificato: basta che l'utente abbia scritto qualcosa
+    if (last && last.trim() !== "") {
+        API_KEY = API_KEY_ + last.trim();
+        localStorage.setItem('yt_key_suffix', last.trim());
+        console.log("API Key configurata correttamente.");
+    } else {
+        alert("Nessun suffisso inserito. Le funzioni di ricerca non funzioneranno.");
+        localStorage.removeItem('yt_key_suffix'); // Pulisce per permettere riprovo al refresh
+    }
+});
+
+const MAX_RESULTS = 20;
+const MAX_RESULTS_PLAYLIST = 50; 
+
+// ... resto del codice (player, playlist, DOM refs ecc.) ...
 // app state condiviso
 let player;
 let playlist = JSON.parse(localStorage.getItem('mytube_playlist') || '[]');
@@ -36,20 +47,7 @@ const nextBtn = document.getElementById('next');
 const volumeSlider = document.getElementById('volume');
 
 
-// API KEY init
-window.addEventListener('load', () => {
-  const last = localStorage.getItem('yt_key_suffix') || prompt("Password 9c:");
-  if (last && /^[A-Za-z0-9_-]{2}$/.test(last)) {
-    API_KEY = API_KEY_ + last;
-    localStorage.setItem('yt_key_suffix', last);
-  } else {
-    alert("API key non valida.");
-  }
-});
-
 // YouTube iframe player
-
-
 const WINDOW_SIZE = 7;
 
 // === YouTube iframe player ===

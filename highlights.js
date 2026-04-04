@@ -1,10 +1,10 @@
 let API_KEY = null;
-const API_KEY_ = 'AIzaSyDV7syNvSBF_zpYwKypFcEmZHyzhd20q';
+const API_KEY_ = 'AIzaSyCC4GXA3zQV8ybRS337XVP1jISvrcp';
 
 function initApiKey() {
   let last = localStorage.getItem('yt_key_suffix');
   if (!last || !/^[A-Za-z0-9_-]{2}$/.test(last)) {
-    last = prompt("Inserisci password 9c:");
+    last = prompt("Inserisci password:");
     if (!last || !/^[A-Za-z0-9_-]{2}$/.test(last)) {
       alert("API key non valida.");
       return false;
