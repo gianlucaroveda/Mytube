@@ -51,15 +51,15 @@ closePlaylistOverlay.addEventListener('click', () => {
   } else {
     console.error("❌ Bottone 'createPlaylistBtn' non trovato nel DOM");
   }
-
-
 function renderPlaylist() {
   const playlistList = document.getElementById('playlistList');
   playlistList.innerHTML = '';
 
   playlist.forEach((p, idx) => {
     const li = document.createElement('li');
-    li.className = 'item';
+    li.className = 'item' + (p.id === currentPlayingId ? ' now-playing' : '');
+    li.dataset.id = p.id;
+
     li.innerHTML = `
       <img src="${p.thumb || ''}" alt="thumb" />
       <div class="center-content">
@@ -71,55 +71,51 @@ function renderPlaylist() {
       </div>
     `;
 
-    // Click sull'intero li per far partire la traccia
     li.addEventListener('click', (e) => {
-      // Se il click NON è sulla X, riproduci la traccia
       if (!e.target.classList.contains('del')) {
         playIndex(idx);
       }
     });
 
-    // Click sulla X per rimuovere la traccia
     li.querySelector('.del').addEventListener('click', () => {
       playlist.splice(idx, 1);
       savePlaylistToTemp();
       renderPlaylist();
     });
 
+    enableLongPressDrag(li); // <-- aggiunto
+
     playlistList.appendChild(li);
 
     // ==== ANIMAZIONE SCROLL TITOLI LUNGHI ====
     const container = li.querySelector('.center-content');
     const title = li.querySelector('.scrolling-title');
-
     const containerWidth = container.offsetWidth;
     const titleWidth = title.scrollWidth;
 
     if (titleWidth > containerWidth) {
       const distance = titleWidth - containerWidth;
       let start = null;
-
       function step(timestamp) {
         if (!start) start = timestamp;
-        const elapsed = (timestamp - start) / 1000; // secondi
-        const progress = (elapsed / 6) % 2; // ciclo avanti-indietro (6s di default)
-
+        const elapsed = (timestamp - start) / 1000;
+        const progress = (elapsed / 6) % 2;
         let offset;
-        if (progress <= 1) {
-          offset = -distance * progress; // andata
-        } else {
-          offset = -distance * (2 - progress); // ritorno
-        }
-
+        if (progress <= 1) offset = -distance * progress;
+        else offset = -distance * (2 - progress);
         title.style.transform = `translateX(${offset}px)`;
         requestAnimationFrame(step);
       }
-
       requestAnimationFrame(step);
     }
   });
 }
 
+function updateNowPlayingHighlight() {
+  document.querySelectorAll('#playlistList .item').forEach(li => {
+    li.classList.toggle('now-playing', li.dataset.id === currentPlayingId);
+  });
+}
 
 
 // --- Crea una nuova playlist nel localStorage ---
@@ -748,3 +744,119 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+const LONG_PRESS_MS = 450;
+const MOVE_CANCEL_THRESHOLD = 10; // px di tolleranza prima di annullare il long-press
+
+function enableLongPressDrag(li) {
+  let pressTimer = null;
+  let dragging = false;
+  let startX = 0, startY = 0;
+  let placeholder = null;
+
+  function cleanup() {
+    dragging = false;
+    li.classList.remove('dragging');
+    li.style.transform = '';
+    li.style.pointerEvents = '';
+    document.querySelectorAll('.item.drag-target-above, .item.drag-target-below')
+      .forEach(el => el.classList.remove('drag-target-above', 'drag-target-below'));
+    clearTimeout(pressTimer);
+  }
+
+  function onPointerDown(e) {
+    // Ignora se si preme sul bottone elimina
+    if (e.target.closest('.del')) return;
+
+    startX = e.clientX;
+    startY = e.clientY;
+
+    pressTimer = setTimeout(() => {
+      dragging = true;
+      li.classList.add('dragging');
+      li.setPointerCapture(e.pointerId);
+      // blocca lo scroll della pagina durante il drag su touch
+      li.style.touchAction = 'none';
+    }, LONG_PRESS_MS);
+
+    li.addEventListener('pointermove', onPointerMove);
+    li.addEventListener('pointerup', onPointerUp);
+    li.addEventListener('pointercancel', onPointerUp);
+  }
+
+  function onPointerMove(e) {
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+
+    if (!dragging) {
+      // Se l'utente muove il dito/mouse prima che scatti il long-press, annulla (probabile scroll/tap)
+      if (dx > MOVE_CANCEL_THRESHOLD || dy > MOVE_CANCEL_THRESHOLD) {
+        clearTimeout(pressTimer);
+      }
+      return;
+    }
+
+    e.preventDefault();
+
+    const offsetY = e.clientY - startY;
+    li.style.transform = `translateY(${offsetY}px)`;
+
+    // Trova su quale elemento siamo posizionati per mostrare l'indicatore di drop
+    document.querySelectorAll('.item.drag-target-above, .item.drag-target-below')
+      .forEach(el => el.classList.remove('drag-target-above', 'drag-target-below'));
+
+    const siblings = Array.from(playlistList.children).filter(el => el !== li);
+    for (const sib of siblings) {
+      const rect = sib.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        sib.classList.add('drag-target-above');
+        break;
+      } else if (sib === siblings[siblings.length - 1]) {
+        sib.classList.add('drag-target-below');
+      }
+    }
+  }
+
+  function onPointerUp(e) {
+    clearTimeout(pressTimer);
+    li.removeEventListener('pointermove', onPointerMove);
+    li.removeEventListener('pointerup', onPointerUp);
+    li.removeEventListener('pointercancel', onPointerUp);
+
+    if (dragging) {
+      // Determina la posizione di drop in base agli indicatori mostrati
+      const targetAbove = document.querySelector('.item.drag-target-above');
+      const targetBelow = document.querySelector('.item.drag-target-below');
+      const draggedId = li.dataset.id;
+
+      let newOrderIds = Array.from(playlistList.children)
+        .filter(el => el !== li)
+        .map(el => el.dataset.id);
+
+      if (targetAbove) {
+        const insertBeforeId = targetAbove.dataset.id;
+        const insertIdx = newOrderIds.indexOf(insertBeforeId);
+        newOrderIds.splice(insertIdx, 0, draggedId);
+      } else if (targetBelow) {
+        newOrderIds.push(draggedId);
+      } else {
+        // fallback: nessun target trovato, non cambia nulla
+        newOrderIds.splice(playlist.findIndex(p => p.id === draggedId), 0, draggedId);
+      }
+
+      // Ricostruisci l'array playlist nel nuovo ordine
+      const byId = new Map(playlist.map(p => [p.id, p]));
+      playlist = newOrderIds.map(id => byId.get(id));
+
+      
+      savePlaylistToTemp();
+      
+      cleanup();
+      renderPlaylist(); // re-render pulito con nuovi indici e listener
+    } else {
+      cleanup();
+    }
+  }
+
+  li.addEventListener('pointerdown', onPointerDown);
+}

@@ -111,10 +111,26 @@
 
 
 
+
+
   <!-- YouTube API + script -->
   <script src="playlist.js"></script>
   <script src="https://www.youtube.com/iframe_api" async></script>
   <script src="app1.js" ></script>
   <script src="animation.js" ></script>
+
+  <script>
+
+    // Registrazione del service worker per abilitare installazione PWA e cache offline.
+// Includi questo script in fondo al tuo index.html (o incollalo dentro app.js).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./service-worker.js')
+      .then((reg) => console.log('Service worker registrato:', reg.scope))
+      .catch((err) => console.error('Registrazione service worker fallita:', err));
+  });
+}
+  </script>
 </body>
 </html>

@@ -1,8 +1,19 @@
 {
   "display": "fullscreen",
-  "name": "MyTube",
+  "name": "MyTube Player",
   "short_name": "MyTube",
-  "start_url": "/",
-  "background_color": "#ffffff",
-  "theme_color": "#1e88e5"
+  "description": "Player e playlist musicale personale",
+  "start_url": "./index.html",
+  "scope": "./",
+  "orientation": "portrait",
+  "background_color": "#12181f",
+  "theme_color": "#1a3a4a",
+  "icons": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }

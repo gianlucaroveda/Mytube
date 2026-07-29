@@ -374,7 +374,7 @@ aside.right h2 {
   height: 65px;
   border-radius: 6px;
   object-fit: cover;
-  margin-left: -4px; /* 👈 sposta leggermente a sinistra per bilanciare */
+  margin-left: -4px; 
 }
 
 /* Testo accanto all’immagine */
@@ -624,6 +624,18 @@ h2 {
   }
 }
 
+.item.now-playing {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    rgba(190, 241, 255, 0.25) 0%,
+    rgba(190, 241, 255, 0.08) 60%,
+    rgba(190, 241, 255, 0.25) 100%
+  );
+  border-radius: 8px; /* se già presente sul .item base, puoi ometterlo qui */
+}
+
+
 
 #volume {
   accent-color: #ff4444; /* colore principale */
@@ -684,4 +696,22 @@ h2 {
 #Popup_selezione-title {
     margin-bottom: 1rem;
     color: #c00;
+}
+
+
+.item.dragging {
+  opacity: 0.85;
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+  position: relative;
+  cursor: grabbing;
+}
+
+.item.drag-target-above {
+  border-top: 2px solid rgba(190, 241, 255, 0.9);
+}
+
+.item.drag-target-below {
+  border-bottom: 2px solid rgba(190, 241, 255, 0.9);
 }

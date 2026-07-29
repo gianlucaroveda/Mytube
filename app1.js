@@ -25,6 +25,7 @@ window.addEventListener('load', () => {
 
 const MAX_RESULTS = 20;
 const MAX_RESULTS_PLAYLIST = 50; 
+let currentPlayingId = null; // id del brano attualmente in riproduzione
 
 // ... resto del codice (player, playlist, DOM refs ecc.) ...
 // app state condiviso
@@ -135,6 +136,11 @@ function loadYouTubeWindow(index) {
   });
 }
 
+function updateNowPlayingHighlight() {
+  document.querySelectorAll('#playlistList .item').forEach(li => {
+    li.classList.toggle('now-playing', li.dataset.id === currentPlayingId);
+  });
+}
 
 
 // === Controlli base ===
@@ -142,6 +148,8 @@ function playIndex(i) {
   if (!player || !playlist.length) return;
   currentIndex = i;
   loadYouTubeWindow(currentIndex);
+  updateNowPlayingHighlight();
+
 }
 
 function playNext() {
@@ -178,42 +186,27 @@ function togglePlay() {
 function onPlayerStateChange(e) {
   if (e.data === YT.PlayerState.PLAYING) {
     const videoId = player.getVideoData().video_id;
-
-    // sincronizza indice
-    const foundIdx = playlist.findIndex(v => v.id === videoId);
-    if (foundIdx !== -1) currentIndex = foundIdx;
-
-    maybeUpdateWindow();
-
-    // aggiorna solo UI
-    updateBackgroundFromThumbnail(videoId);
-    document.getElementById('play').innerHTML = "&#x23F8;";
-  } 
-  else if (e.data === YT.PlayerState.PAUSED) {
-    document.getElementById('play').innerHTML = "&#x25B6;";
-  }
-
-}
-// === YouTube state change ===
-function onPlayerStateChange(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    const videoId = player.getVideoData().video_id;
-
-    // ✅ recupera indice reale del video corrente dalla playlist interna di YouTube
-    const idxInPlaylist = player.getPlaylistIndex();
+    currentPlayingId = videoId;
+    // Prova a recuperare l'indice reale dalla playlist interna di YouTube
+    const idxInPlaylist = player.getPlaylistIndex?.();
     if (idxInPlaylist !== undefined && idxInPlaylist >= 0) {
-      // calcola l'indice assoluto nel playlist globale
       currentIndex = currentWindowStart + idxInPlaylist;
+    } else {
+      // Fallback: cerca per id nella playlist locale
+      const foundIdx = playlist.findIndex(v => v.id === videoId);
+      if (foundIdx !== -1) currentIndex = foundIdx;
     }
 
     maybeUpdateWindow();
 
-    // aggiorna solo UI
+    // Aggiorna UI
     updateBackgroundFromThumbnail(videoId);
     document.getElementById('play').innerHTML = "&#x23F8;"; // pausa
-  } 
+    updateNowPlayingHighlight();
+  }
   else if (e.data === YT.PlayerState.PAUSED) {
     document.getElementById('play').innerHTML = "&#x25B6;"; // play
+    updateNowPlayingHighlight();
   }
 }
 
