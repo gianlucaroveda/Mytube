@@ -51,8 +51,15 @@ closePlaylistOverlay.addEventListener('click', () => {
   } else {
     console.error("❌ Bottone 'createPlaylistBtn' non trovato nel DOM");
   }
-function renderPlaylist() {
+
+ function renderPlaylist() {
   const playlistList = document.getElementById('playlistList');
+  if (!playlistList) return;
+
+  // 1. Salva la posizione dello scroll (sia della lista, sia della pagina)
+  const listScrollTop = playlistList.scrollTop;
+  const pageScrollTop = window.scrollY || document.documentElement.scrollTop;
+
   playlistList.innerHTML = '';
 
   playlist.forEach((p, idx) => {
@@ -83,7 +90,7 @@ function renderPlaylist() {
       renderPlaylist();
     });
 
-    enableLongPressDrag(li); // <-- aggiunto
+    enableLongPressDrag(li);
 
     playlistList.appendChild(li);
 
@@ -109,6 +116,10 @@ function renderPlaylist() {
       requestAnimationFrame(step);
     }
   });
+
+  // 2. Ripristina entrambi gli scroll
+  playlistList.scrollTop = listScrollTop;
+  window.scrollTo(0, pageScrollTop);
 }
 
 function updateNowPlayingHighlight() {
@@ -751,7 +762,6 @@ function enableLongPressDrag(li) {
   let pressTimer = null;
   let dragging = false;
   let startX = 0, startY = 0;
-  let placeholder = null;
 
   function cleanup() {
     dragging = false;
@@ -763,44 +773,59 @@ function enableLongPressDrag(li) {
     clearTimeout(pressTimer);
   }
 
-  function onPointerDown(e) {
-    // Ignora se si preme sul bottone elimina
+  function getClientCoords(e) {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function onStart(e) {
     if (e.target.closest('.del')) return;
 
-    startX = e.clientX;
-    startY = e.clientY;
+    const coords = getClientCoords(e);
+    startX = coords.x;
+    startY = coords.y;
 
     pressTimer = setTimeout(() => {
       dragging = true;
       li.classList.add('dragging');
-      li.setPointerCapture(e.pointerId);
-      // blocca lo scroll della pagina durante il drag su touch
-      li.style.touchAction = 'none';
     }, LONG_PRESS_MS);
 
-    li.addEventListener('pointermove', onPointerMove);
-    li.addEventListener('pointerup', onPointerUp);
-    li.addEventListener('pointercancel', onPointerUp);
+    // Eventi Touch
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchcancel', onEnd);
+
+    // Eventi Mouse (Desktop)
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
   }
 
-  function onPointerMove(e) {
-    const dx = Math.abs(e.clientX - startX);
-    const dy = Math.abs(e.clientY - startY);
+  function onMove(e) {
+    const coords = getClientCoords(e);
+    const dx = Math.abs(coords.x - startX);
+    const dy = Math.abs(coords.y - startY);
 
     if (!dragging) {
-      // Se l'utente muove il dito/mouse prima che scatti il long-press, annulla (probabile scroll/tap)
+      // Se si muove prima di 450ms, annulla il timer per permettere lo scroll nativo del container
       if (dx > MOVE_CANCEL_THRESHOLD || dy > MOVE_CANCEL_THRESHOLD) {
         clearTimeout(pressTimer);
       }
       return;
     }
 
-    e.preventDefault();
+    // Una volta che il drag è attivo, blocca lo scroll del container
+    if (e.cancelable) {
+      e.preventDefault();
+    }
 
-    const offsetY = e.clientY - startY;
+    const offsetY = coords.y - startY;
     li.style.transform = `translateY(${offsetY}px)`;
 
-    // Trova su quale elemento siamo posizionati per mostrare l'indicatore di drop
     document.querySelectorAll('.item.drag-target-above, .item.drag-target-below')
       .forEach(el => el.classList.remove('drag-target-above', 'drag-target-below'));
 
@@ -808,7 +833,7 @@ function enableLongPressDrag(li) {
     for (const sib of siblings) {
       const rect = sib.getBoundingClientRect();
       const midY = rect.top + rect.height / 2;
-      if (e.clientY < midY) {
+      if (coords.y < midY) {
         sib.classList.add('drag-target-above');
         break;
       } else if (sib === siblings[siblings.length - 1]) {
@@ -817,14 +842,16 @@ function enableLongPressDrag(li) {
     }
   }
 
-  function onPointerUp(e) {
+  function onEnd(e) {
     clearTimeout(pressTimer);
-    li.removeEventListener('pointermove', onPointerMove);
-    li.removeEventListener('pointerup', onPointerUp);
-    li.removeEventListener('pointercancel', onPointerUp);
+
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onEnd);
+    window.removeEventListener('touchcancel', onEnd);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onEnd);
 
     if (dragging) {
-      // Determina la posizione di drop in base agli indicatori mostrati
       const targetAbove = document.querySelector('.item.drag-target-above');
       const targetBelow = document.querySelector('.item.drag-target-below');
       const draggedId = li.dataset.id;
@@ -840,23 +867,20 @@ function enableLongPressDrag(li) {
       } else if (targetBelow) {
         newOrderIds.push(draggedId);
       } else {
-        // fallback: nessun target trovato, non cambia nulla
         newOrderIds.splice(playlist.findIndex(p => p.id === draggedId), 0, draggedId);
       }
 
-      // Ricostruisci l'array playlist nel nuovo ordine
       const byId = new Map(playlist.map(p => [p.id, p]));
       playlist = newOrderIds.map(id => byId.get(id));
 
-      
       savePlaylistToTemp();
-      
       cleanup();
-      renderPlaylist(); // re-render pulito con nuovi indici e listener
+      renderPlaylist();
     } else {
       cleanup();
     }
   }
 
-  li.addEventListener('pointerdown', onPointerDown);
+  li.addEventListener('touchstart', onStart, { passive: true });
+  li.addEventListener('mousedown', onStart);
 }
