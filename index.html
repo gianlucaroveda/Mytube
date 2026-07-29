@@ -6,7 +6,9 @@
   <title>MyTube</title>
 
   <!-- Manifest e CSS -->
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#121212">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="styles.css" />
 
   <!-- ✅ Content Security Policy -->
@@ -119,14 +121,17 @@
   <script src="app1.js" ></script>
   <script src="animation.js" ></script>
 
-  <script>
 
-    // Registrazione del service worker per abilitare installazione PWA e cache offline.
-if('serviceWorker' in navigator){
+
+<script>
+  if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker Registrato!', reg))
+        .catch(err => console.error('Errore SW:', err));
     });
   }
-  </script>
+</script>
+
 </body>
 </html>
