@@ -10,6 +10,8 @@
   <meta name="theme-color" content="#121212">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="footer.css" />
+  <link rel="stylesheet" href="libreria.css" />
 
   <!-- ✅ Content Security Policy -->
   <!-- Permette iframe e media da YouTube -->
@@ -57,16 +59,9 @@
 
     <!-- 1️⃣ Playlist Actions -->
     <div id="playlistActions" class="playlist-actions">
-      <button id="createPlaylistBtn">+</button>
-      <button id="saveLocal">💾</button>
-      <button id="loadLocal">📂</button>
+
+
       <button id="clearPlaylist">🗑️</button>
-      <button id="randomizerBtn" class="icon-btn" title="randomizer">🎲</button>
-      <button id="overwriteLocal">Sovrascrivi</button>
-      <button id="importPlaylist">📋 Importa playlist</button>
-      <button id="deletePlaylistBtn">❌ Elimina playlist</button>
-      <button id="goFullscreen" class="fullscreen-btn">🖵</button>
-      <button id="modifyBtn">🔑</button>
     </div>
 
     <!-- 2️⃣ Import fixed button -->
@@ -83,36 +78,132 @@
 
 </main>
 
-<button id="toggleSearchBtn" class="dots-btn">🔍</button>
 
- <!-- 🔍 Contenitore della ricerca -->
-<!-- Area di ricerca nascosta di default -->
-<div id="searchArea" class="search-area hidden-search">
-  <div class="actions">
-    <div class="search-row">
-      <input id="searchInput" placeholder="Cerca su YouTube..." />
-      <div class="button-column">
-        <button id="searchBtn">Video</button>
-        <button id="searchPlaylistBtn">Playlist</button>
+<!-- OVERLAY MODALE DI RICERCA -->
+<div class="modal-overlay" id="search-overlay">
+  <div class="app-width">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      
+      <!-- Contenitore della ricerca -->
+      <div id="searchArea" class="search-area">
+        <div class="actions">
+          <div class="search-row">
+            <input id="searchInput" placeholder="Cerca su YouTube..." />
+            <div class="button-column">
+              <button id="searchBtn">Video</button>
+              <button id="searchPlaylistBtn">Playlist</button>
+            </div>
+          </div>
+
+          <button id="toggleLinkBtn" class="dots-btn">...</button>
+
+          <div id="linkSearch" class="hidden-link">
+            <input id="addUrl" placeholder="Aggiungi per URL o ID" />
+            <button id="addBtn">Aggiungi</button>
+          </div>
+        </div>
+
+        <div id="results" class="results-container">
+          <ul id="resultsList"></ul>
+        </div>
       </div>
+
     </div>
-
-    <button id="toggleLinkBtn" class="dots-btn">...</button>
-
-    <div id="linkSearch" class="hidden-link">
-      <input id="addUrl" placeholder="Aggiungi per URL o ID" />
-      <button id="addBtn">Aggiungi</button>
-    </div>
-  </div>
-
-  <div id="results" class="results-container">
-    <ul id="resultsList"></ul>
   </div>
 </div>
 
+<!-- OVERLAY MODALE LIBRERIA -->
+<div class="modal-overlay" id="library-overlay">
+  <div class="app-width">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      
+      <h2 style="margin-bottom: 15px; text-align: center;">La tua Libreria</h2>
+      
+      <!-- Griglia per i cubotti delle playlist (2 per riga) -->
+      <div id="libraryGrid" class="library-grid">
+        <!-- Generato dinamicamente via JS -->
+      </div>
 
+    </div>
+  </div>
+</div>
 
+<!-- MODALE SELEZIONE GRAFICA PLAYLIST -->
+<div id="select-playlist-overlay" class="modal-overlay">
+  <div class="modal-content select-playlist-content">
+    <div class="modal-header">
+      <h3>Aggiungi a...</h3>
+      <button id="close-select-playlist-btn" class="close-btn">&times;</button>
+    </div>
+    <div id="select-playlist-grid" class="select-playlist-grid">
+      <!-- I cubotti/schede delle playlist verranno generati qui dinamicamente -->
+    </div>
+  </div>
+</div>
 
+<div class="modal-overlay" id="randomizer-overlay">
+  <div class="app-width">
+    <div class="modal">
+      <div class="modal-handle"></div>
+
+      <div class="modal-header">
+        <h3>🎲 Mix & Strumenti</h3>
+      </div>
+
+      <!-- Sezione 1: Chiave API -->
+      <div class="randomizer-section">
+        <div class="section-title">Impostazioni API</div>
+        <button id="modifyBtn" class="action-btn-key">🔑 Gestisci Chiave API</button>
+      </div>
+
+      <!-- Sezione 2: Daily Mix -->
+      <div class="randomizer-section">
+        <div class="section-title">I tuoi Daily Mix</div>
+        <div id="dailyMixGrid" class="daily-mix-grid">
+          <!-- Cubotto per creare un nuovo Mix -->
+          <div id="createMixCard" class="mix-card create-card">
+            <span class="plus-icon">+</span>
+            <span>Crea Daily Mix</span>
+          </div>
+          <!-- I cubotti dei Daily Mix salvati appariranno qui dinamicamente -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. MODALE SELEZIONE PLAYLIST PER DAILY MIX -->
+<div class="modal-overlay" id="mix-select-overlay">
+  <div class="app-width">
+    <div class="modal">
+      <div class="modal-handle"></div>
+
+      <div class="modal-header">
+        <h3>Seleziona Playlist per il Mix</h3>
+      </div>
+      
+      <div class="mix-input-group">
+        <input type="text" id="mixNameInput" placeholder="Nome del Mix (es. Relax & Rock)" />
+      </div>
+
+      <div id="mixPlaylistChecklist" class="mix-checklist">
+        <!-- Lista di checkbox generate dinamicamente -->
+      </div>
+
+      <button id="saveMixBtn" class="action-btn-save">🎲 Genera & Salva Mix</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="fixed-footer">
+  <button class="footer-btn" id="footer-home-btn">Home</button>
+  <button class="footer-btn" id="footer-search-btn">Cerca</button>
+  <button class="footer-btn" id="footer-library-btn">Libreria</button>
+  <button class="footer-btn" id="footer-profile-btn">Profilo</button>
+</footer>
 
 
   <!-- YouTube API + script -->
@@ -120,6 +211,8 @@
   <script src="https://www.youtube.com/iframe_api" async></script>
   <script src="app1.js" ></script>
   <script src="animation.js" ></script>
+  <script src="cerca.js" ></script>
+  <script src="libreria.js" ></script>
 
 
 

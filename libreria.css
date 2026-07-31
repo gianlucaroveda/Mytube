@@ -1,0 +1,445 @@
+/* Griglia 2 colonne per i cubotti delle playlist */
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Stile del singolo cubotto */
+.playlist-card {
+  position: relative;
+  aspect-ratio: 16 / 9; /* Forma a rettangolo/cubotto video */
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #2a2a2a;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: flex-end;
+}
+
+.playlist-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Gradiente scuro sul testo per renderlo sempre leggibile */
+.playlist-card-overlay {
+  width: 100%;
+  padding: 8px 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.playlist-card-title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-card-count {
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+/* Stile speciale per il cubotto "Nuova Playlist" (+) */
+.playlist-card.create-card {
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.playlist-card.create-card:hover {
+  border-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.create-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #ffffff;
+}
+
+.plus-icon {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.create-title {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.playlist-info {
+  overflow: hidden;
+  padding-right: 6px;
+}
+
+/* Bottone dei tre pallini */
+.card-options-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.card-options-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Posizionamento relativo dell'elemento della coda per agganciare il popover */
+#playlistList li.item {
+  position: relative;
+}
+
+/* Stile pulsante tre pallini */
+.item-menu-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  opacity: 0.8;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.item-menu-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Quadratino Popover del Menu */
+.item-popover {
+  position: absolute;
+  right: 12px;
+  top: 45px;
+  z-index: 100;
+  background-color: #1e1e2e;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 170px;
+  animation: popoverFadeIn 0.15s ease-out;
+}
+
+.item-popover.hidden {
+  display: none !important;
+}
+
+/* Pulsanti opzioni dentro il popover */
+.popover-opt {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  padding: 10px 14px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.popover-opt:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.popover-opt:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.popover-opt.opt-del:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+@keyframes popoverFadeIn {
+  from { opacity: 0; transform: translateY(-5px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Modale di Selezione Playlist */
+.select-playlist-content {
+  max-width: 420px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Griglia 2 colonne per le schede playlist */
+.select-playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+/* Cubotto di Selezione */
+.select-playlist-card {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background-color: var(--glass-dark, rgba(30, 30, 46, 0.7));
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.select-playlist-card:active {
+  transform: scale(0.96);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Sfocatura/Gradiente Sovrapposto */
+.select-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.2) 60%, rgba(0, 0, 0, 0.1) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 10px;
+}
+
+.select-card-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-card-count {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.empty-msg {
+  grid-column: span 2;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 20px 0;
+  font-size: 14px;
+}
+
+
+
+/* Styling Modale Randomizer */
+.randomizer-modal-content {
+  max-width: 480px;
+  width: 92%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.randomizer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Pulsante Chiave API (Mantenuto coordinato) */
+.action-btn-key {
+  width: 100%;
+  padding: 12px;
+  background: var(--glass-light, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-dark, rgba(255, 255, 255, 0.15));
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s;
+}
+
+.action-btn-key:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Griglia Daily Mix */
+.daily-mix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mix-card {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: var(--glass-dark, rgba(30, 30, 46, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.mix-card:active {
+  transform: scale(0.96);
+}
+
+/* Cubotto di Creazione (+) */
+.mix-card.create-card {
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.8);
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mix-card.create-card .plus-icon {
+  font-size: 28px;
+  font-weight: 300;
+}
+
+/* Card Mix Esistente */
+.mix-item-card {
+  background: linear-gradient(135deg, rgba(100, 80, 255, 0.3), rgba(255, 80, 150, 0.3));
+}
+
+.mix-card-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+}
+
+.mix-card-title {
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mix-card-sub {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+}
+
+.delete-mix-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Checklist e Input Creazione Mix */
+.mix-select-content {
+  max-width: 400px;
+  width: 90%;
+}
+
+.mix-input-group input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.mix-checklist {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 13px;
+}
+
+.checklist-item input {
+  accent-color: #7000ff;
+}
+
+.action-btn-save {
+  width: 100%;
+  padding: 12px;
+  background: #7000ff;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}

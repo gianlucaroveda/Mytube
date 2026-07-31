@@ -1,0 +1,130 @@
+/* --- Tema generale --- */
+:root {
+  --accent: #b05cff10;
+  --glass-dark: rgba(0, 0, 0, 0.25);
+  --glass-light: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(36, 36, 36, 0.192);
+  --border-dark: rgba(0, 0, 0, 0.2);
+}
+
+/* Container del Footer Fisso in basso */
+.fixed-footer {
+  position: fixed;
+  bottom: 0; /* Fissato esattamente sul bordo inferiore */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%; /* Occupa l'intera larghezza (o usa l'80%/99% se vuoi i margini) */
+  max-width: 900px;
+  height: 60px; /* Altezza fissa della barra */
+  
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch; /* Estende i bottoni per occupare tutta l'altezza */
+  gap: 2px; /* Spazio separatore sottile e pulito tra i bottoni */
+
+  background-color: var(--glass-dark);
+  padding: 0; /* Rimosso il padding per far toccare i bottoni ai bordi del footer */
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+/* Stile dei Pulsanti */
+.footer-btn {
+  flex: 1; /* Dividono lo spazio orizzontale in parti uguali */
+  height: 100%; /* Riempiono l'intera altezza del footer */
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  background-color: var(--glass-dark);
+  color: #ffffff;
+  border: none;
+  border-radius: 0; /* Rimosso per riempire la barra in modo uniforme */
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+  text-align: center;
+}
+
+/* Effetto Hover / Pressione */
+.footer-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.footer-btn:active {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Layout responsive per mobile */
+@media (max-width: 480px) {
+  .fixed-footer {
+    height: 55px; /* Leggermente più basso su mobile */
+    gap: 1px;
+  }
+
+  .footer-btn {
+    font-size: 12px;
+  }
+}
+    /* Sfondo oscurato (Overlay) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px); /* Effetto sfocatura sfondo */
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; /* Posiziona la finestra in basso stile bottom-sheet */
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Stato aperto dell'overlay */
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Contenitore interno */
+.app-width {
+  width: 100%;
+}
+
+/* Finestra modale vera e propria */
+.modal {
+  background: #141414e0; /* Colore di sfondo scuro */
+
+  padding: 5px;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Quando l'overlay è aperto, la modale sale verso l'alto */
+.modal-overlay.open .modal {
+  transform: translateY(0);
+}
+
+/* Maniglia decorativa in alto */
+.modal-handle {
+  width: 40px;
+  height: 5px;
+  background-color: #cbd5e1;
+  margin: 0 auto 15px auto;
+}
+
+/* Gestione opzionale del link nascosto dentro la ricerca */
+.hidden-link {
+  display: none;
+}
+.hidden-link.show {
+  display: flex;
+}

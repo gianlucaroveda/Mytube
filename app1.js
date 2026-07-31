@@ -37,7 +37,6 @@ let currentWindowStart = 0;
 // DOM refs
 const resultsList = document.getElementById('resultsList');
 const playlistList = document.getElementById('playlistList');
-const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const searchPlaylistBtn = document.getElementById('searchPlaylistBtn');
 const addUrl = document.getElementById('addUrl');
@@ -49,7 +48,7 @@ const volumeSlider = document.getElementById('volume');
 
 
 // YouTube iframe player
-const WINDOW_SIZE = 7;
+const WINDOW_SIZE = 4;
 
 // === YouTube iframe player ===
 function onYouTubeIframeAPIReady() {
@@ -63,17 +62,28 @@ function onYouTubeIframeAPIReady() {
 
 
 function loadYouTubeWindow(index) {
-  if (!player || !playlist.length) return;
+  if (!player || !playlist || !playlist.length) return;
 
-  // 1 prima, 3 dopo → finestra di 5 elementi centrata sull’attuale
+  // Assicuriamoci che l'indice sia all'interno dei limiti della playlist
+  if (index < 0 || index >= playlist.length) return;
+
+  // 1. Calcola l'inizio (1 brano prima) e la fine (fino a 2 brani dopo)
   const start = Math.max(0, index - 1);
-  const end = Math.min(playlist.length, index + (WINDOW_SIZE - 2));
-  const windowIds = playlist.slice(start, end).map(v => v.id);
+  // In JS slice non include l'elemento all'indice 'end', quindi usiamo index + 3 (index + 1 + 2)
+  const end = Math.min(playlist.length, index + 3);
 
-  currentWindowStart = start; // memorizza dove inizia la finestra globale
+  // 2. Estrai la finestra degli ID
+  const windowIds = playlist.slice(start, end);
+
+  // 3. Calcola l'indice relativo preciso del video corrente ALL'INTERNO della finestra
   const currentInWindow = index - start;
 
-  console.log("🎬 Carico finestra YouTube:", windowIds, "(current:", currentInWindow, ")");
+  // Memorizza dove inizia la finestra globale
+  currentWindowStart = start;
+
+  console.log("🎬 Carico finestra YouTube:", windowIds, "(Index relativo nella finestra:", currentInWindow, ")");
+
+  // 4. Carica la playlist su YouTube
   player.loadPlaylist({
     playlist: windowIds,
     index: currentInWindow,
@@ -276,9 +286,7 @@ function ModificaAPIKey() {
 }
 
 // --- Eventi principali ---
-searchBtn.addEventListener('click', ()=>searchYouTube(searchInput.value.trim()));
 
-searchPlaylistBtn.addEventListener('click', ()=>searchYouTubePlaylists(searchInput.value.trim()));
 
 addBtn.addEventListener('click', ()=> {
   const id = extractVideoId(addUrl.value);
@@ -453,123 +461,4 @@ function updateBackgroundFromThumbnail(videoId) {
     document.body.style.transition = "background-color 1s ease";
     document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
   };
-}
-
-
-async function searchYouTubePlaylists(query) {
-  if (!API_KEY) {
-    alert('Inserisci la tua API key valida.');
-    return;
-  }
-
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=playlist&maxResults=${MAX_RESULTS}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    alert('Errore chiamata YouTube API');
-    return;
-  }
-
-  const data = await res.json();
-  renderPlaylistResults(data.items || []);
-}
-
-function renderPlaylistResults(items) {
-  resultsList.innerHTML = '';
-  for (const it of items) {
-    const li = document.createElement('li');
-    li.className = 'item';
-    const playlistId = it.id.playlistId;
-
-    li.innerHTML = `
-      <img src="${it.snippet.thumbnails.default.url}" alt="thumb" />
-      <div class="text">
-        <div class="scrolling-title">${escapeHtml(it.snippet.title)}</div>
-        <div class="channel">${escapeHtml(it.snippet.channelTitle)}</div>
-      </div>
-      <div>
-        <button data-pid="${playlistId}">Importa</button>
-      </div>
-    `;
-
-    li.querySelector('button').addEventListener('click', () => {
-      importPlaylistById(playlistId);
-    });
-
-    resultsList.appendChild(li);
-  }
-}
-
-// --- Importa i video da una playlist trovata ---
-async function importPlaylistById(playlistId) {
-  if (!API_KEY) {
-    alert('Inserisci la tua API key valida.');
-    return;
-  }
-
-  const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${MAX_RESULTS_PLAYLIST}&playlistId=${playlistId}&key=${API_KEY}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    alert('Errore nel caricamento della playlist.');
-    return;
-  }
-
-  const data = await res.json();
-  for (const it of data.items) {
-    const vid = it.snippet.resourceId.videoId;
-    playlist.push({
-      id: vid,
-      title: it.snippet.title,
-      thumb: it.snippet.thumbnails?.default?.url || ''
-    });
-  }
-
-  savePlaylistToTemp();
-  renderPlaylist();
-  alert('✅ Playlist importata con successo!');
-}
-
-
-// --- Ricerca YouTube ---
-async function searchYouTube(query){
-  if(!API_KEY){
-    alert('Inserisci la tua API key valida.');
-    return;
-  }
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${MAX_RESULTS}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
-  const res = await fetch(url);
-  if(!res.ok){ alert('Errore chiamata YouTube API'); return; }
-  const data = await res.json();
-  renderResults(data.items || []);
-}
-
-function renderResults(items) {
-  resultsList.innerHTML = '';
-  for (const it of items) {
-    const li = document.createElement('li');
-    li.className = 'item';
-    const vid = it.id.videoId;
-
-    li.innerHTML = `
-      <img src="${it.snippet.thumbnails.default.url}" alt="thumb" />
-      <div class="text">
-        <div class="scrolling-title">${escapeHtml(it.snippet.title)}</div>
-        <div class="channel">${escapeHtml(it.snippet.channelTitle)}</div>
-      </div>
-      <div>
-        <button data-vid="${vid}">Aggiungi</button>
-      </div>
-    `;
-
-    li.querySelector('button').addEventListener('click', () => {
-      playlist.push({
-        id: vid,
-        title: it.snippet.title,
-        thumb: it.snippet.thumbnails.default.url
-      });
-      savePlaylistToTemp();
-      renderPlaylist();
-    });
-
-    resultsList.appendChild(li);
-  }
 }

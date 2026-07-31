@@ -22,6 +22,13 @@ body {
   transition: background-color 1s ease;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden; /* Previene lo scorrimento orizzontale indesiderato */
+}
+
 ::-webkit-scrollbar {
   display: none;
 }
@@ -36,15 +43,13 @@ body {
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 }
 
-
-/* --- Layout principale --- */
 main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  padding: 32px;
-  width: 100%;
+  
+  width: 100vw; /* Utilizza il 100% della larghezza della finestra (Viewport Width) */
+  margin-left: calc(-50vw + 50%); /* Forza la rottura da eventuali contenitori padri limitati */
   box-sizing: border-box;
 }
 
@@ -67,16 +72,20 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
+  padding: 10px;
   margin-top: 16px;
-  width: 80%;
+  width: 100%;
   max-width: 600px;
-  border-radius: 25px;
   backdrop-filter: blur(10px);
   background: var(--glass-dark);
   border: 2px solid var(--border-dark);
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.384);
+
+  /* Correzioni per evitare lo scorrimento/spostamento orizzontale */
+  box-sizing: border-box; /* Include padding e border nella larghezza totale */
+  margin-left: auto;     /* Centra perfettamente l'elemento */
+  margin-right: auto;
+  touch-action: pan-y;   /* Impedisce swipe/trascinamenti orizzontali su touch */
 }
 
 /* === Contenitore principale === */
@@ -160,12 +169,7 @@ main {
   display: flex;
 }
 
-/* === Contenitore risultati === */
-.results-container {
-  max-height: 300px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
+
 .results-container::-webkit-scrollbar {
   display: none;
 }
@@ -174,10 +178,11 @@ main {
 /* --- Risultati --- */
 .results-container {
   width: 100%;
-  max-height: 370px;
+  max-height: 500px;
   overflow-y: auto;
   border-radius: 16px;
   padding: 10px;
+    scrollbar-width: none;
 
 }
 
@@ -196,10 +201,9 @@ main {
 
 /* --- Player Card --- */
 #playerCard {
-  width: 70%;
-  max-width: 500px;
-  padding: 24px;
-  border-radius: 25px;
+  width: 100%;
+  min-height: 800px;
+  padding: 3%;
   background: var(--glass-dark);
   border: 2px solid var(--border-dark);
   backdrop-filter: blur(10px);
@@ -348,7 +352,8 @@ aside.right h2 {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 330px;
+  min-height: 550px;
+  max-height: 550px;
   overflow-y: auto;
 }
 
@@ -371,7 +376,7 @@ aside.right h2 {
 /* Miniatura */
 #playlistList li.item img {
   width: 85px;
-  height: 65px;
+  height: 69px;
   border-radius: 6px;
   object-fit: cover;
   margin-left: -4px; 
@@ -442,6 +447,7 @@ aside.right h2 {
   gap: 12px;
   padding: 10px;
   border-bottom: 1px solid rgba(255,255,255,0.3);
+  position: relative;
 }
 
 #resultsList li.item:last-child {
@@ -601,15 +607,10 @@ h2 {
   to { opacity: 1; transform: scale(1); }
 }
 
-/* --- Responsività --- */
-@media (max-width: 768px) {
-  main {
-    padding: 20px;
-  }
 
   #playerCard,
   aside.right {
-    width: 87%;
+    width: 94%;
   }
 
   .controls button {
@@ -622,7 +623,6 @@ h2 {
     width: 65px;
     height: 65px;
   }
-}
 
 .item.now-playing {
   position: relative;

@@ -52,11 +52,13 @@ closePlaylistOverlay.addEventListener('click', () => {
     console.error("❌ Bottone 'createPlaylistBtn' non trovato nel DOM");
   }
 
- function renderPlaylist() {
+// VARIABILE GLOBALE PER TRACCIARE IL VIDEO DA AGGIUNGERE
+let videoToAddToPlaylist = null;
+
+function renderPlaylist() {
   const playlistList = document.getElementById('playlistList');
   if (!playlistList) return;
 
-  // 1. Salva la posizione dello scroll (sia della lista, sia della pagina)
   const listScrollTop = playlistList.scrollTop;
   const pageScrollTop = window.scrollY || document.documentElement.scrollTop;
 
@@ -70,31 +72,62 @@ closePlaylistOverlay.addEventListener('click', () => {
     li.innerHTML = `
       <img src="${p.thumb || ''}" alt="thumb" />
       <div class="center-content">
-        <div class="scrolling-title">${escapeHtml(p.title || p.id)}</div>
+        <div class="scrolling-title">${typeof escapeHtml === 'function' ? escapeHtml(p.title || p.id) : (p.title || p.id)}</div>
         <div class="index-label">#${idx + 1}</div>
       </div>
       <div class="btns">
-        <button class="del secondary" data-idx="${idx}">✖</button>
+        <button class="item-menu-btn secondary" data-idx="${idx}">⋮</button>
+      </div>
+      <!-- Mini Popover Menu -->
+      <div class="item-popover hidden">
+        <button class="popover-opt opt-add">➕ Aggiungi a playlist</button>
+        <button class="popover-opt opt-del">🗑️ Elimina dalla coda</button>
       </div>
     `;
 
+    // Click sull'elemento -> Riproduzione
     li.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('del')) {
+      if (!e.target.closest('.btns') && !e.target.closest('.item-popover')) {
         playIndex(idx);
       }
     });
 
-    li.querySelector('.del').addEventListener('click', () => {
+    const menuBtn = li.querySelector('.item-menu-btn');
+    const popover = li.querySelector('.item-popover');
+    const btnAdd = li.querySelector('.opt-add');
+    const btnDel = li.querySelector('.opt-del');
+
+    // Apertura Popover Menu
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.item-popover').forEach(p => {
+        if (p !== popover) p.classList.add('hidden');
+      });
+      popover.classList.toggle('hidden');
+    });
+
+    // Opzione 1: Aggiungi a Playlist (Apre Selezione Grafica)
+    btnAdd.addEventListener('click', (e) => {
+      e.stopPropagation();
+      popover.classList.add('hidden');
+      openSelectPlaylistModal(p); // Passa l'oggetto video corrente
+    });
+
+    // Opzione 2: Elimina dalla Coda
+    btnDel.addEventListener('click', (e) => {
+      e.stopPropagation();
       playlist.splice(idx, 1);
-      savePlaylistToTemp();
+      if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
       renderPlaylist();
     });
 
-    enableLongPressDrag(li);
+    if (typeof enableLongPressDrag === 'function') {
+      enableLongPressDrag(li);
+    }
 
     playlistList.appendChild(li);
 
-    // ==== ANIMAZIONE SCROLL TITOLI LUNGHI ====
+    // Animazione Scroll Titoli Lunghi
     const container = li.querySelector('.center-content');
     const title = li.querySelector('.scrolling-title');
     const containerWidth = container.offsetWidth;
@@ -117,34 +150,103 @@ closePlaylistOverlay.addEventListener('click', () => {
     }
   });
 
-  // 2. Ripristina entrambi gli scroll
   playlistList.scrollTop = listScrollTop;
   window.scrollTo(0, pageScrollTop);
 }
 
-function updateNowPlayingHighlight() {
-  document.querySelectorAll('#playlistList .item').forEach(li => {
-    li.classList.toggle('now-playing', li.dataset.id === currentPlayingId);
-  });
+// ==========================================
+// LOGICA SELEZIONE GRAFICA DELLE PLAYLIST
+// ==========================================
+
+function openSelectPlaylistModal(videoObject) {
+  videoToAddToPlaylist = videoObject;
+  const modal = document.getElementById('select-playlist-overlay');
+  const grid = document.getElementById('select-playlist-grid');
+  if (!modal || !grid) return;
+
+  grid.innerHTML = '';
+
+  // Filtra solo le playlist utente (chiavi xx_)
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('xx_'));
+
+  if (keys.length === 0) {
+    grid.innerHTML = `<div class="empty-msg">Nessuna playlist creata in libreria.</div>`;
+  } else {
+    keys.forEach(storageKey => {
+      const displayName = storageKey.replace(/^xx_/, '');
+      const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const firstVideoId = items[0]?.id || items[0]?.videoId;
+      const thumbnailUrl = firstVideoId 
+        ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg` 
+        : '';
+
+      const card = document.createElement('div');
+      card.className = 'select-playlist-card';
+      if (thumbnailUrl) {
+        card.style.backgroundImage = `url('${thumbnailUrl}')`;
+      }
+
+      card.innerHTML = `
+        <div class="select-card-overlay">
+          <div class="select-card-title">${typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName}</div>
+          <div class="select-card-count">${items.length} brani</div>
+        </div>
+      `;
+
+      // Click sulla scheda -> Append del video alla playlist
+      card.addEventListener('click', () => {
+        appendVideoToPlaylist(storageKey, displayName, videoToAddToPlaylist);
+        closeSelectPlaylistModal();
+      });
+
+      grid.appendChild(card);
+    });
+  }
+
+  modal.classList.add('open');
 }
 
+function closeSelectPlaylistModal() {
+  const modal = document.getElementById('select-playlist-overlay');
+  if (modal) modal.classList.remove('open');
+  videoToAddToPlaylist = null;
+}
 
-// --- Crea una nuova playlist nel localStorage ---
-function createPlaylistFromPrompt() {
-  const name = prompt("Inserisci il nome della nuova playlist:");
-  if (!name) return;
-  const trimmed = name.trim();
-  if (!trimmed) {
-    alert('Nome non valido.');
+function appendVideoToPlaylist(storageKey, displayName, videoObj) {
+  if (!videoObj) return;
+
+  const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const targetId = videoObj.id || videoObj.videoId;
+
+  // Controllo duplicati
+  const exists = items.some(item => (item.id || item.videoId) === targetId);
+  if (exists) {
+    alert(`⚠️ Il brano è già presente nella playlist "${displayName}"!`);
     return;
   }
-  if (localStorage.getItem(trimmed) !== null) {
-    const ok = confirm(`Esiste già una playlist "${trimmed}". Sovrascriverla?`);
-    if (!ok) return;
-  }
-  localStorage.setItem(trimmed, JSON.stringify([]));
-  alert(`✅ Playlist "${trimmed}" creata.`);
+
+  items.push(videoObj);
+  localStorage.setItem(storageKey, JSON.stringify(items));
 }
+
+// Chiudi Popover al click esterno
+document.addEventListener('click', () => {
+  document.querySelectorAll('.item-popover').forEach(p => p.classList.add('hidden'));
+});
+
+// Listener per chiusura Modale
+document.addEventListener('DOMContentLoaded', () => {
+  const closeBtn = document.getElementById('close-select-playlist-btn');
+  const overlay = document.getElementById('select-playlist-overlay');
+
+  if (closeBtn) closeBtn.addEventListener('click', closeSelectPlaylistModal);
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeSelectPlaylistModal();
+    });
+  }
+});
+
 
 function savePlaylist() {
   const currentQueue = JSON.parse(localStorage.getItem('mytube_playlist') || '[]');
