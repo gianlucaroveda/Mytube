@@ -1,57 +1,6 @@
 
 
 
-console.log("✅ Script caricato correttamente");
-
-const togglePlaylistButtons = document.getElementById('togglePlaylistButtons');
-const playlistOverlay = document.getElementById('playlistOverlay');
-const closePlaylistOverlay = document.getElementById('closePlaylistOverlay');
-
-togglePlaylistButtons.addEventListener('click', () => {
-  playlistOverlay.classList.toggle('active');
-});
-
-closePlaylistOverlay.addEventListener('click', () => {
-  playlistOverlay.classList.remove('active');
-});
-
-
-
-
-// Recupero il bottone
-  const createPlaylistBtn = document.getElementById('createPlaylistBtn');
-  console.log("🔍 Bottone trovato?", !!createPlaylistBtn);
-
-  // Funzione per creare la playlist
-  function createPlaylistFromPrompt() {
-    console.log("🎯 Click ricevuto su 'Crea nuova playlist'");
-    const name = prompt("Inserisci il nome della nuova playlist (no caratteri / o null):");
-    if (!name) {
-      console.log("⚠️ Prompt annullato o vuoto");
-      return;
-    }
-    const trimmed = name.trim();
-    if (!trimmed) {
-      alert('Nome non valido.');
-      return;
-    }
-    if (localStorage.getItem(trimmed) !== null) {
-      const ok = confirm(`Esiste già una chiave chiamata "${trimmed}". Sovrascriverla?`);
-      if (!ok) return;
-    }
-    localStorage.setItem(trimmed, JSON.stringify([]));
-    console.log(`💾 Playlist "${trimmed}" salvata in localStorage`);
-    alert(`Playlist "${trimmed}" creata.`);
-  }
-
-  // Aggiunta evento click
-  if (createPlaylistBtn) {
-    createPlaylistBtn.addEventListener('click', createPlaylistFromPrompt);
-    console.log("✅ Listener click aggiunto al bottone");
-  } else {
-    console.error("❌ Bottone 'createPlaylistBtn' non trovato nel DOM");
-  }
-
 // VARIABILE GLOBALE PER TRACCIARE IL VIDEO DA AGGIUNGERE
 let videoToAddToPlaylist = null;
 

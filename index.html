@@ -32,51 +32,22 @@
       <div id="playerCard" class="card">
         <div id="player"></div>
         <div class="controls">
+          <button id="shuffleBtn" class="icon-btn" title="Mischia Playlist">🔀</button>
           <button id="prev">&#x23EE;</button>
           <button id="play">&#x23f8;</button>
           <button id="next">&#x23ED;</button>
+          <button id="clearPlaylist">🗑️</button>
         </div>
          <input id="volume" type="range" min="0" max="100" value="50" style="width:100px; margin-left:10px;" color="white"/>
+        <br>
+        <br>
         
-         <div class="playlist-header">
-            <h2>Playlist</h2>
-            <button id="shuffleBtn" class="icon-btn" title="Mischia Playlist">🔀</button>
-            <button id="togglePlaylistButtons" class="icon-btn" title="Mostra/Nascondi controlli playlist">🎵</button>
-          </div>
           <ul id="playlistList"></ul>
         
 
       </div>
     </section>
 
-      
-       <!-- 🔽 Questi bottoni saranno nascosti inizialmente -->
-
-
-<div id="playlistOverlay" class="hidden-overlay">
-  <div class="overlay-content">
-    
-
-    <!-- 1️⃣ Playlist Actions -->
-    <div id="playlistActions" class="playlist-actions">
-
-
-      <button id="clearPlaylist">🗑️</button>
-    </div>
-
-    <!-- 2️⃣ Import fixed button -->
-    <button id="importFixedBtn">🎬 YouTube</button>
-
-
-    <!-- Highlight button -->
-    <button id="gotoHighlightsBtn">🏀</button>
-
-    <button id="closePlaylistOverlay" class="close-btn">✖</button>
-
-  </div>
-</div>
-
-</main>
 
 
 <!-- OVERLAY MODALE DI RICERCA -->

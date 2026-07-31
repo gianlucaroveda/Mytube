@@ -100,8 +100,7 @@
 
 /* Finestra modale vera e propria */
 .modal {
-  background: #141414e0; /* Colore di sfondo scuro */
-
+  background: var(--glass-dark); /* Colore di sfondo scuro */
   padding: 5px;
   overflow-y: auto;
   transform: translateY(100%);
@@ -117,7 +116,7 @@
 .modal-handle {
   width: 40px;
   height: 5px;
-  background-color: #cbd5e1;
+  background-color: #e3effd;
   margin: 0 auto 15px auto;
 }
 

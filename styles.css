@@ -77,9 +77,9 @@ main {
   width: 100%;
   max-width: 600px;
   backdrop-filter: blur(10px);
-  background: var(--glass-dark);
+  background: rgba(138, 138, 138, 0.014);
   border: 2px solid var(--border-dark);
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.384);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.123);
 
   /* Correzioni per evitare lo scorrimento/spostamento orizzontale */
   box-sizing: border-box; /* Include padding e border nella larghezza totale */
@@ -213,8 +213,8 @@ main {
 }
 
 #player {
-  width: 90%;
-  height: 50%;
+  width: 80%;
+  height: 300%;
   aspect-ratio: 16 / 9;
   border-radius: 18px;
   overflow: hidden;
@@ -352,8 +352,8 @@ aside.right h2 {
   list-style: none;
   padding: 0;
   margin: 0;
-  min-height: 550px;
-  max-height: 550px;
+  min-height: 500px;
+  max-height: 500px;
   overflow-y: auto;
 }
 
