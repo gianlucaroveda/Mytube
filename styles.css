@@ -352,8 +352,8 @@ aside.right h2 {
   list-style: none;
   padding: 0;
   margin: 0;
-  min-height: 490px;
-  max-height: 490px;
+  min-height: 475px;
+  max-height: 475px;
   overflow-y: auto;
 }
 
