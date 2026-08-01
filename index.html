@@ -114,6 +114,32 @@
   </div>
 </div>
 
+
+<!-- OVERLAY MODALE MODIFICA PLAYLIST -->
+<div class="modal-overlay" id="edit-overlay">
+  <div class="app-width">
+    <div class="modal">
+      <div class="modal-handle"></div>
+
+      <div id="editArea" class="search-area">
+        <div class="actions">
+          <div class="search-row">
+            <input id="editPlaylistName" placeholder="Nome playlist" />
+            <div class="button-column">
+              <button id="editSaveNameBtn">Rinomina</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="editResults" class="results-container">
+          <ul id="editResultsList"></ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="randomizer-overlay">
   <div class="app-width">
     <div class="modal">
@@ -127,6 +153,7 @@
       <div class="randomizer-section">
         <div class="section-title">Impostazioni API</div>
         <button id="modifyBtn" class="action-btn-key">🔑 Gestisci Chiave API</button>
+        <button id="saveLocal">💾</button>
       </div>
 
       <!-- Sezione 2: Daily Mix -->

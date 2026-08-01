@@ -3,6 +3,14 @@
   const libraryOverlay = document.getElementById('library-overlay');
   const btnLibraryFooter = document.getElementById('footer-library-btn');
 
+  // --- ELEMENTI DOM DEL MODALE MODIFICA ---
+  const editOverlay = document.getElementById('edit-overlay');
+  const editResultsList = document.getElementById('editResultsList');
+  const editPlaylistNameInput = document.getElementById('editPlaylistName');
+  const editSaveNameBtn = document.getElementById('editSaveNameBtn');
+
+  let currentEditingKey = null; // storageKey della playlist attualmente in modifica
+
   // Funzione helper locale per sicurezza nell'HTML
   function safeText(str) {
     if (typeof escapeHtml === 'function') return escapeHtml(str);
@@ -41,7 +49,7 @@
     renderLibraryPlaylists();
   }
 
-  // --- APERTURA E CHIUSURA ---
+  // --- APERTURA E CHIUSURA LIBRERIA ---
   function openLibraryModal() {
     if (!libraryOverlay) return;
     renderLibraryPlaylists();
@@ -53,7 +61,123 @@
     libraryOverlay.classList.remove('open');
   }
 
-  // --- RENDERING DEI CUBOTTI ---
+  // ==================================================
+  // --- MODALE MODIFICA PLAYLIST ---
+  // ==================================================
+
+  function openEditPlaylistModal(storageKey) {
+    if (!editOverlay) return;
+    currentEditingKey = storageKey;
+
+    const displayName = storageKey.replace(/^xx_/, '');
+    if (editPlaylistNameInput) editPlaylistNameInput.value = displayName;
+
+    renderEditPlaylistItems();
+    editOverlay.classList.add('open');
+  }
+
+  function closeEditPlaylistModal() {
+    if (!editOverlay) return;
+    editOverlay.classList.remove('open');
+    currentEditingKey = null;
+  }
+
+  function renderEditPlaylistItems() {
+    if (!editResultsList || !currentEditingKey) return;
+    editResultsList.innerHTML = '';
+
+    const items = JSON.parse(localStorage.getItem(currentEditingKey) || '[]');
+
+    if (items.length === 0) {
+      editResultsList.innerHTML = `<li class="empty-message">Nessun elemento in questa playlist.</li>`;
+      return;
+    }
+
+    items.forEach((item, index) => {
+      const videoId = item.id || item.videoId;
+      const title = item.title || videoId || 'Senza titolo';
+      const thumbnailUrl = videoId ? `https://i.ytimg.com/vi/${videoId}/default.jpg` : '';
+
+      const li = document.createElement('li');
+      li.className = 'result-item';
+      li.innerHTML = `
+        ${thumbnailUrl ? `<img src="${thumbnailUrl}" class="result-thumb" />` : ''}
+        <span class="result-title">${safeText(title)}</span>
+        <div class="result-actions">
+          <button class="editMoveUpBtn" title="Sposta su">▲</button>
+          <button class="editMoveDownBtn" title="Sposta giù">▼</button>
+          <button class="editRemoveBtn" title="Rimuovi">✖</button>
+        </div>
+      `;
+
+      li.querySelector('.editMoveUpBtn').addEventListener('click', () => moveItemInPlaylist(index, -1));
+      li.querySelector('.editMoveDownBtn').addEventListener('click', () => moveItemInPlaylist(index, 1));
+      li.querySelector('.editRemoveBtn').addEventListener('click', () => removeItemFromPlaylist(index));
+
+      editResultsList.appendChild(li);
+    });
+  }
+
+  function removeItemFromPlaylist(index) {
+    if (!currentEditingKey) return;
+    const items = JSON.parse(localStorage.getItem(currentEditingKey) || '[]');
+    items.splice(index, 1);
+    localStorage.setItem(currentEditingKey, JSON.stringify(items));
+    renderEditPlaylistItems();
+  }
+
+  function moveItemInPlaylist(index, direction) {
+    if (!currentEditingKey) return;
+    const items = JSON.parse(localStorage.getItem(currentEditingKey) || '[]');
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= items.length) return;
+
+    [items[index], items[newIndex]] = [items[newIndex], items[index]];
+    localStorage.setItem(currentEditingKey, JSON.stringify(items));
+    renderEditPlaylistItems();
+  }
+
+  function renamePlaylist() {
+    if (!currentEditingKey || !editPlaylistNameInput) return;
+    const newName = editPlaylistNameInput.value.trim();
+    if (!newName) return;
+
+    const newKey = `xx_${newName}`;
+    if (newKey === currentEditingKey) return;
+
+    if (localStorage.getItem(newKey)) {
+      alert("⚠️ Esiste già una playlist con questo nome!");
+      return;
+    }
+
+    const items = localStorage.getItem(currentEditingKey);
+    localStorage.setItem(newKey, items);
+    localStorage.removeItem(currentEditingKey);
+    currentEditingKey = newKey;
+
+    renderLibraryPlaylists();
+  }
+
+  if (editSaveNameBtn) {
+    editSaveNameBtn.addEventListener('click', renamePlaylist);
+  }
+
+  if (editOverlay) {
+    editOverlay.addEventListener('click', function (e) {
+      if (e.target === editOverlay) closeEditPlaylistModal();
+    });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && editOverlay && editOverlay.classList.contains('open')) {
+      closeEditPlaylistModal();
+    }
+  });
+
+  // ==================================================
+  // --- RENDERING DEI CUBOTTI (LIBRERIA) ---
+  // ==================================================
+
   function renderLibraryPlaylists() {
     const libraryGrid = document.getElementById('libraryGrid') || document.getElementById('library-grid');
     if (!libraryGrid) return;
@@ -77,10 +201,10 @@
     playlistKeys.forEach(storageKey => {
       const displayName = storageKey.replace(/^xx_/, '');
       const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      
+
       const firstVideoId = items[0]?.id || items[0]?.videoId;
-      const thumbnailUrl = firstVideoId 
-        ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg` 
+      const thumbnailUrl = firstVideoId
+        ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
         : '';
 
       const card = document.createElement('div');
@@ -95,35 +219,18 @@
             <div class="playlist-card-title">${safeText(displayName)}</div>
             <div class="playlist-card-count">${items.length} elementi</div>
           </div>
-          <button class="card-options-btn" title="Opzioni">⋮</button>
+          <div class="card-options-wrap">
+            <button class="card-options-btn" title="Opzioni">⋮</button>
+          </div>
         </div>
       `;
 
-      // LOGICA DI CONFERMA INLINE (Metodo 1)
+      const optionsWrap = card.querySelector('.card-options-wrap');
       const optionsBtn = card.querySelector('.card-options-btn');
-      let timeoutId = null;
 
       optionsBtn.addEventListener('click', (e) => {
-        // Evita che il click avvii il caricamento della playlist
         e.stopPropagation();
-
-        if (!optionsBtn.classList.contains('confirming')) {
-          // PRIMO CLICK: Trasforma il bottone nel badge di conferma
-          optionsBtn.classList.add('confirming');
-          optionsBtn.textContent = 'Elimina';
-
-          // Ripristino automatico dopo 3 secondi di inattività
-          timeoutId = setTimeout(() => {
-            optionsBtn.classList.remove('confirming');
-            optionsBtn.textContent = '⋮';
-          }, 3000);
-
-        } else {
-          // SECONDO CLICK: Annulla il timer ed elimina la playlist
-          clearTimeout(timeoutId);
-          localStorage.removeItem(storageKey);
-          renderLibraryPlaylists();
-        }
+        showOptionsMenu(optionsWrap, storageKey);
       });
 
       // Click sul resto del cubotto -> Carica la playlist nel player
@@ -131,7 +238,7 @@
         if (typeof playlist !== 'undefined') {
           playlist = items;
         }
-        
+
         if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
         if (typeof renderPlaylist === 'function') renderPlaylist();
 
@@ -144,6 +251,70 @@
 
       libraryGrid.appendChild(card);
     });
+  }
+
+  // --- MENU A DUE OPZIONI (MODIFICA / ELIMINA) ---
+  function showOptionsMenu(wrapEl, storageKey) {
+    // Se il menu è già aperto per questa card, non ricrearlo
+    if (wrapEl.querySelector('.card-options-btn').classList.contains('menu-open')) return;
+
+    const originalBtn = wrapEl.querySelector('.card-options-btn');
+    originalBtn.classList.add('menu-open');
+    originalBtn.style.display = 'none';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'card-options-btn option-edit';
+    editBtn.textContent = '✏️';
+    editBtn.title = 'Modifica';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'card-options-btn option-delete';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.title = 'Elimina';
+
+    let deleteTimeoutId = null;
+
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeOptionsMenu();
+      openEditPlaylistModal(storageKey);
+    });
+
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      if (!deleteBtn.classList.contains('confirming')) {
+        // PRIMO CLICK: chiedi conferma
+        deleteBtn.classList.add('confirming');
+        deleteBtn.textContent = 'Elimina';
+
+        deleteTimeoutId = setTimeout(() => {
+          deleteBtn.classList.remove('confirming');
+          deleteBtn.textContent = '🗑️';
+        }, 3000);
+      } else {
+        // SECONDO CLICK: elimina davvero
+        clearTimeout(deleteTimeoutId);
+        localStorage.removeItem(storageKey);
+        renderLibraryPlaylists();
+      }
+    });
+
+    function closeOptionsMenu() {
+      editBtn.remove();
+      deleteBtn.remove();
+      outsideCloser && document.removeEventListener('click', outsideCloser);
+      originalBtn.style.display = '';
+      originalBtn.classList.remove('menu-open');
+    }
+
+    const outsideCloser = (e) => {
+      if (!wrapEl.contains(e.target)) closeOptionsMenu();
+    };
+    document.addEventListener('click', outsideCloser);
+
+    wrapEl.appendChild(editBtn);
+    wrapEl.appendChild(deleteBtn);
   }
 
   // --- EVENT LISTENERS ---

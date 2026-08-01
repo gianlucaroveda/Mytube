@@ -229,7 +229,7 @@ function savePlaylist() {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: '1000',
+    zIndex: '9000',
     scrollbarStyle: 'hidden'
   });
 
@@ -621,7 +621,7 @@ function overwritePlaylist() {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: '1000',
+    zIndex: '2000',
     overflowY: 'scroll'
   });
 
@@ -724,7 +724,7 @@ function deletePlaylist() {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: '1000',
+    zIndex: '2000',
     overflowY: 'scroll'
   });
 
