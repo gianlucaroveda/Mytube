@@ -11,6 +11,48 @@
 
   let currentEditingKey = null; // storageKey della playlist attualmente in modifica
 
+// Array globale in memoria
+let playlistOrder = JSON.parse(localStorage.getItem('xx_order') || '[]');
+
+// Salva l'ordine attuale nel localStorage
+function savePlaylistOrder() {
+  localStorage.setItem('xx_order', JSON.stringify(playlistOrder));
+}
+
+// Sincronizza l'array d'ordine con le chiavi reali sul localStorage
+function getOrderedPlaylistKeys() {
+  // 1. Recupera tutte le chiavi che iniziano con "xx_" (escludendo 'xx_order')
+  const actualKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('xx_') && key !== 'xx_order') {
+      actualKeys.push(key);
+    }
+  }
+
+  // 2. Mantiene le chiavi esistenti seguendo l'ordine memorizzato
+  let updatedOrder = playlistOrder.filter(key => actualKeys.includes(key));
+
+  // 3. Aggiungi eventuali nuove playlist mai viste in coda
+  actualKeys.forEach(key => {
+    if (!updatedOrder.includes(key)) {
+      updatedOrder.push(key);
+    }
+  });
+
+  playlistOrder = updatedOrder;
+  savePlaylistOrder();
+  return playlistOrder;
+}
+
+// Sposta in cima (in prima posizione) una chiave playlist
+function moveKeyToTop(storageKey) {
+  playlistOrder = playlistOrder.filter(k => k !== storageKey);
+  playlistOrder.unshift(storageKey);
+  savePlaylistOrder();
+}
+
+
   // Funzione helper locale per sicurezza nell'HTML
   function safeText(str) {
     if (typeof escapeHtml === 'function') return escapeHtml(str);
@@ -33,21 +75,25 @@
   }
 
   // --- FUNZIONE PER CREARE UNA NUOVA PLAYLIST VUOTA ---
-  function createNewPlaylist() {
-    const name = prompt("Inserisci il nome per la nuova playlist:");
-    if (!name || !name.trim()) return;
+function createNewPlaylist() {
+  const name = prompt("Inserisci il nome per la nuova playlist:");
+  if (!name || !name.trim()) return;
 
-    const cleanName = name.trim();
-    const storageKey = `xx_${cleanName}`;
+  const cleanName = name.trim();
+  const storageKey = `xx_${cleanName}`;
 
-    if (localStorage.getItem(storageKey)) {
-      alert("⚠️ Esiste già una playlist con questo nome!");
-      return;
-    }
-
-    localStorage.setItem(storageKey, JSON.stringify([]));
-    renderLibraryPlaylists();
+  if (localStorage.getItem(storageKey)) {
+    alert("⚠️ Esiste già una playlist con questo nome!");
+    return;
   }
+
+  localStorage.setItem(storageKey, JSON.stringify([]));
+  
+  // 🚀 Mette subito in cima la playlist appena creata
+  moveKeyToTop(storageKey);
+
+  renderLibraryPlaylists();
+}
 
   // --- APERTURA E CHIUSURA LIBRERIA ---
   function openLibraryModal() {
@@ -153,6 +199,11 @@
     const items = localStorage.getItem(currentEditingKey);
     localStorage.setItem(newKey, items);
     localStorage.removeItem(currentEditingKey);
+
+    // 🚀 Sostituisce la vecchia chiave con la nuova mantenendo o spostando in cima la playlist
+    playlistOrder = playlistOrder.map(k => (k === currentEditingKey ? newKey : k));
+    moveKeyToTop(newKey);
+
     currentEditingKey = newKey;
 
     renderLibraryPlaylists();
@@ -179,79 +230,82 @@
   // ==================================================
 
   function renderLibraryPlaylists() {
-    const libraryGrid = document.getElementById('libraryGrid') || document.getElementById('library-grid');
-    if (!libraryGrid) return;
-    libraryGrid.innerHTML = '';
+  const libraryGrid = document.getElementById('libraryGrid') || document.getElementById('library-grid');
+  if (!libraryGrid) return;
+  libraryGrid.innerHTML = '';
 
-    // 1. CUBOTTO "+ NUOVA PLAYLIST"
-    const addCard = document.createElement('div');
-    addCard.className = 'playlist-card create-card';
-    addCard.innerHTML = `
-      <div class="create-card-content">
-        <span class="plus-icon">+</span>
-        <span class="create-title">Nuova Playlist</span>
+  // 1. CUBOTTO "+ NUOVA PLAYLIST" (Sempre per primo)
+  const addCard = document.createElement('div');
+  addCard.className = 'playlist-card create-card';
+  addCard.innerHTML = `
+    <div class="create-card-content">
+      <span class="plus-icon">+</span>
+      <span class="create-title">Nuova Playlist</span>
+    </div>
+  `;
+  addCard.addEventListener('click', createNewPlaylist);
+  libraryGrid.appendChild(addCard);
+
+  // 2. CUBOTTI PLAYLIST SALVATE (In ordine di selezione recente)
+  const playlistKeys = getOrderedPlaylistKeys();
+
+  playlistKeys.forEach(storageKey => {
+    const displayName = storageKey.replace(/^xx_/, '');
+    const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+    const firstVideoId = items[0]?.id || items[0]?.videoId;
+    const thumbnailUrl = firstVideoId
+      ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
+      : '';
+
+    const card = document.createElement('div');
+    card.className = 'playlist-card';
+    if (thumbnailUrl) {
+      card.style.backgroundImage = `url('${thumbnailUrl}')`;
+    }
+
+    card.innerHTML = `
+      <div class="playlist-card-overlay">
+        <div class="playlist-info">
+          <div class="playlist-card-title">${safeText(displayName)}</div>
+          <div class="playlist-card-count">${items.length} elementi</div>
+        </div>
+        <div class="card-options-wrap">
+          <button class="card-options-btn" title="Opzioni">⋮</button>
+        </div>
       </div>
     `;
-    addCard.addEventListener('click', createNewPlaylist);
-    libraryGrid.appendChild(addCard);
 
-    // 2. CUBOTTI PLAYLIST SALVATE
-    const playlistKeys = getSavedPlaylistKeys();
+    const optionsWrap = card.querySelector('.card-options-wrap');
+    const optionsBtn = card.querySelector('.card-options-btn');
 
-    playlistKeys.forEach(storageKey => {
-      const displayName = storageKey.replace(/^xx_/, '');
-      const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    optionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showOptionsMenu(optionsWrap, storageKey);
+    });
 
-      const firstVideoId = items[0]?.id || items[0]?.videoId;
-      const thumbnailUrl = firstVideoId
-        ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
-        : '';
+    // Click sul cubotto -> Sposta la playlist in cima + Carica nel player
+    card.addEventListener('click', () => {
+      // 🚀 Sposta questa playlist in prima posizione
+      moveKeyToTop(storageKey);
 
-      const card = document.createElement('div');
-      card.className = 'playlist-card';
-      if (thumbnailUrl) {
-        card.style.backgroundImage = `url('${thumbnailUrl}')`;
+      if (typeof playlist !== 'undefined') {
+        playlist = items;
       }
 
-      card.innerHTML = `
-        <div class="playlist-card-overlay">
-          <div class="playlist-info">
-            <div class="playlist-card-title">${safeText(displayName)}</div>
-            <div class="playlist-card-count">${items.length} elementi</div>
-          </div>
-          <div class="card-options-wrap">
-            <button class="card-options-btn" title="Opzioni">⋮</button>
-          </div>
-        </div>
-      `;
+      if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
+      if (typeof renderPlaylist === 'function') renderPlaylist();
 
-      const optionsWrap = card.querySelector('.card-options-wrap');
-      const optionsBtn = card.querySelector('.card-options-btn');
+      if (typeof updateBackgroundFromThumbnail === 'function' && firstVideoId) {
+        updateBackgroundFromThumbnail(firstVideoId);
+      }
 
-      optionsBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showOptionsMenu(optionsWrap, storageKey);
-      });
-
-      // Click sul resto del cubotto -> Carica la playlist nel player
-      card.addEventListener('click', () => {
-        if (typeof playlist !== 'undefined') {
-          playlist = items;
-        }
-
-        if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
-        if (typeof renderPlaylist === 'function') renderPlaylist();
-
-        if (typeof updateBackgroundFromThumbnail === 'function' && firstVideoId) {
-          updateBackgroundFromThumbnail(firstVideoId);
-        }
-
-        closeLibraryModal();
-      });
-
-      libraryGrid.appendChild(card);
+      closeLibraryModal();
     });
-  }
+
+    libraryGrid.appendChild(card);
+  });
+}
 
   // --- MENU A DUE OPZIONI (MODIFICA / ELIMINA) ---
   function showOptionsMenu(wrapEl, storageKey) {

@@ -62,7 +62,7 @@
       return;
     }
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${MAX_RESULTS}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${typeof MAX_RESULTS !== 'undefined' ? MAX_RESULTS : 10}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
     
     try {
       const res = await fetch(url);
@@ -112,7 +112,6 @@
       // Apertura / Chiusura Popover
       menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Chiude eventuali altri popover aperti nei risultati o nella coda
         document.querySelectorAll('.item-popover').forEach(p => {
           if (p !== popover) p.classList.add('hidden');
         });
@@ -131,7 +130,7 @@
         }
       });
 
-      // Opzione 2: Aggiungi a una Playlist salvata (Apre la Selezione Grafica)
+      // Opzione 2: Aggiungi a una Playlist salvata
       btnAddPlaylist.addEventListener('click', (e) => {
         e.stopPropagation();
         popover.classList.add('hidden');
@@ -155,7 +154,7 @@
       return;
     }
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=playlist&maxResults=${MAX_RESULTS}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=playlist&maxResults=${typeof MAX_RESULTS !== 'undefined' ? MAX_RESULTS : 10}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
     
     try {
       const res = await fetch(url);
@@ -195,41 +194,104 @@
     }
   }
 
-  // 3. Importa Video da una Playlist trovata
-  async function importPlaylistById(playlistId) {
+  // --- ESTRAZIONE ID E IMPORTAZIONE PLAYLIST ---
+
+  // Estrattore Universale di ID Playlist (Accetta URL completi, URL brevi e ID grezzi)
+  function extractPlaylistId(input) {
+    if (!input) return null;
+    let str = input.trim();
+
+    // Se è un URL o contiene parametri di query
+    if (str.includes('list=')) {
+      const match = str.match(/[?&]list=([^&]+)/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    // Se l'utente inserisce direttamente l'ID (es. PL..., OLAK5uy_...)
+    // Rimuove eventuali caratteri o spazi spuri
+    const cleanIdMatch = str.match(/([a-zA-Z0-9_-]{12,})/);
+    return cleanIdMatch ? cleanIdMatch[1] : null;
+  }
+
+  // Importa Video da una Playlist trovata
+  async function importPlaylistById(input) {
     if (typeof API_KEY === 'undefined' || !API_KEY) {
       alert('Inserisci la tua API key valida.');
       return;
     }
 
-    const maxRes = typeof MAX_RESULTS_PLAYLIST !== 'undefined' ? MAX_RESULTS_PLAYLIST : 50;
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${maxRes}&playlistId=${playlistId}&key=${API_KEY}`;
-    
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Errore nel caricamento della playlist.');
-      const data = await res.json();
+    const playlistId = extractPlaylistId(input);
 
-      if (typeof playlist !== 'undefined') {
-        for (const it of data.items) {
-          const vid = it.snippet.resourceId.videoId;
-          playlist.push({
-            id: vid,
-            title: it.snippet.title,
-            thumb: it.snippet.thumbnails?.default?.url || ''
-          });
+
+    let pageToken = '';
+    let importedCount = 0;
+  
+    try {
+      do {
+        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&pageToken=${pageToken}&key=${API_KEY}`;
+        clearPlaylist();
+        const res = await fetch(url);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error?.message || 'Impossibile trovare la playlist.');
         }
 
+        const data = await res.json();
+
+        if (typeof playlist !== 'undefined' && data.items) {
+          for (const it of data.items) {
+            const vid = it.snippet?.resourceId?.videoId;
+            const title = it.snippet?.title;
+
+            // Salta video privati, eliminati o senza ID
+            if (vid && title && title !== 'Private video' && title !== 'Deleted video') {
+              playlist.push({
+                id: vid,
+                title: title,
+                thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || ''
+              });
+              importedCount++;
+            }
+          }
+        }
+
+        pageToken = data.nextPageToken || '';
+      } while (pageToken);
+
+      if (importedCount > 0) {
+        if (addUrlInput) addUrlInput.value = '';
         if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
         if (typeof renderPlaylist === 'function') renderPlaylist();
-        alert('✅ Playlist importata con successo nella coda!');
+        alert(`✅ Importati ${importedCount} brani nella coda!`);
+      } else {
+        alert('⚠️ Nessun video trovato o la playlist è vuota.');
       }
+
     } catch (err) {
-      alert(err.message);
+      alert(`Errore: ${err.message}`);
     }
   }
 
-  // --- EVENT LISTENERS PER I PULSANTI DI RICERCA ---
+  // --- EVENT LISTENERS PER AGGIUNTA TRAMITE URL/ID E RICERCA ---
+
+  if (addBtn && addUrlInput) {
+    addBtn.addEventListener('click', () => {
+      const inputValue = addUrlInput.value.trim();
+      if (!inputValue) {
+        alert('Inserisci un URL o un ID valido.');
+        return;
+      }
+      importPlaylistById(inputValue);
+    });
+
+    addUrlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addBtn.click();
+      }
+    });
+  }
 
   if (searchBtn && searchInput) {
     searchBtn.addEventListener('click', () => {
