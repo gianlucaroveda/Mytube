@@ -23,7 +23,7 @@ window.addEventListener('load', () => {
     }
 });
 
-const MAX_RESULTS = 20;
+const MAX_RESULTS = 50;
 const MAX_RESULTS_PLAYLIST = 50; 
 let currentPlayingId = null; // id del brano attualmente in riproduzione
 
@@ -213,10 +213,16 @@ function onPlayerStateChange(e) {
     updateBackgroundFromThumbnail(videoId);
     document.getElementById('play').innerHTML = "&#x23F8;"; // pausa
     updateNowPlayingHighlight();
+
+    // Aggiorna la notifica media di Android con brano corrente
+    updateMediaSessionMetadata(playlist[currentIndex]);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   }
   else if (e.data === YT.PlayerState.PAUSED) {
     document.getElementById('play').innerHTML = "&#x25B6;"; // play
     updateNowPlayingHighlight();
+
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   }
 }
 
@@ -247,13 +253,21 @@ if ('mediaSession' in navigator) {
   navigator.mediaSession.setActionHandler('pause', () => player.pauseVideo());
   navigator.mediaSession.setActionHandler('previoustrack', playPrev);
   navigator.mediaSession.setActionHandler('nexttrack', playNext);
-  
-  // Mantieni la sessione attiva
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      // tenta di continuare (alcuni browser lo consentono)
-      try { player.playVideo(); } catch {}
-    }
+  navigator.mediaSession.setActionHandler('stop', () => player.pauseVideo());
+}
+
+// Aggiorna titolo/artista/copertina mostrati nella notifica media di Android.
+// È il pezzo che manca di più: senza metadata, il sistema riconosce meno bene
+// la sessione come "riproduzione musicale attiva" e la notifica è debole.
+function updateMediaSessionMetadata(track) {
+  if (!('mediaSession' in navigator) || !track) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: track.title || 'Brano sconosciuto',
+    artist: 'MyTube',
+    album: 'Playlist',
+    artwork: track.thumb ? [
+      { src: track.thumb, sizes: '120x90', type: 'image/jpeg' }
+    ] : []
   });
 }
 

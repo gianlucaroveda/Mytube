@@ -202,7 +202,6 @@ main {
 /* --- Player Card --- */
 #playerCard {
   width: 100%;
-  min-height: 1000px;
   padding: 3%;
   background: var(--glass-dark);
   border: 2px solid var(--border-dark);

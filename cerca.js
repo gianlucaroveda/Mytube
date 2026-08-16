@@ -62,7 +62,7 @@
       return;
     }
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${typeof MAX_RESULTS !== 'undefined' ? MAX_RESULTS : 10}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${typeof MAX_RESULTS !== 'undefined' ? MAX_RESULTS : 50}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
     
     try {
       const res = await fetch(url);
@@ -154,7 +154,7 @@
       return;
     }
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=playlist&maxResults=${typeof MAX_RESULTS !== 'undefined' ? MAX_RESULTS : 10}&q=${encodeURIComponent(query)}&key=${API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=playlist&maxResults=${typeof MAX_RESULTS !== 'undefined' ? MAX_RESULTS : 50 }&q=${encodeURIComponent(query)}&key=${API_KEY}`;
     
     try {
       const res = await fetch(url);
@@ -221,17 +221,17 @@
       alert('Inserisci la tua API key valida.');
       return;
     }
-
+    
     const playlistId = extractPlaylistId(input);
 
 
     let pageToken = '';
     let importedCount = 0;
-  
+    clearPlaylist();
     try {
       do {
-        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&pageToken=${pageToken}&key=${API_KEY}`;
-        clearPlaylist();
+        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=100&playlistId=${playlistId}&pageToken=${pageToken}&key=${API_KEY}`;
+
         const res = await fetch(url);
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
