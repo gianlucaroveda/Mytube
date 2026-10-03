@@ -506,3 +506,6 @@
 }
 .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
 .close-btn { background:none; border:none; color:#fff; font-size:26px; cursor:pointer; line-height:1; }
+
+/* Menu "⋮" unico condiviso (coda + risultati): posizionato da JS */
+#itemMenu { position: fixed; right: auto; z-index: 3000; }

@@ -14,103 +14,93 @@ function getUserPlaylistKeys() {
 }
 
 function renderPlaylist() {
-  const playlistList = document.getElementById('playlistList');
-  if (!playlistList) return;
+  const list = document.getElementById('playlistList');
+  if (!list) return;
 
-  const listScrollTop = playlistList.scrollTop;
-  const pageScrollTop = window.scrollY || document.documentElement.scrollTop;
+  const listScrollTop = list.scrollTop;
 
-  playlistList.innerHTML = '';
+  // Un solo innerHTML per tutta la lista (niente createElement/listener per ogni riga)
+  list.innerHTML = playlist.map((p, idx) => {
+    const thumb = p.thumb || `https://i.ytimg.com/vi/${p.id}/default.jpg`;
+    return `<li class="item" data-id="${escapeHtml(p.id)}" data-idx="${idx}">` +
+      `<img src="${escapeHtml(thumb)}" alt="" width="85" height="69" loading="lazy" decoding="async">` +
+      `<div class="center-content"><div class="scrolling-title">${escapeHtml(p.title || p.id)}</div>` +
+      `<div class="index-label">#${idx + 1}</div></div>` +
+      `<div class="btns"><button class="item-menu-btn secondary">⋮</button></div></li>`;
+  }).join('');
 
-  playlist.forEach((p, idx) => {
-    const li = document.createElement('li');
-    li.className = 'item' + (p.id === currentPlayingId ? ' now-playing' : '');
-    li.dataset.id = p.id;
+  list.scrollTop = listScrollTop;
+  if (typeof updateNowPlayingHighlight === 'function') updateNowPlayingHighlight();
+}
 
-    li.innerHTML = `
-      <img src="${p.thumb || ''}" alt="thumb" />
-      <div class="center-content">
-        <div class="scrolling-title">${typeof escapeHtml === 'function' ? escapeHtml(p.title || p.id) : (p.title || p.id)}</div>
-        <div class="index-label">#${idx + 1}</div>
-      </div>
-      <div class="btns">
-        <button class="item-menu-btn secondary" data-idx="${idx}">⋮</button>
-      </div>
-      <!-- Mini Popover Menu -->
-      <div class="item-popover hidden">
-        <button class="popover-opt opt-add">➕ Aggiungi a playlist</button>
-        <button class="popover-opt opt-del">🗑️ Elimina dalla coda</button>
-      </div>
-    `;
+function removeFromQueue(idx) {
+  if (idx < 0 || idx >= playlist.length) return;
+  playlist.splice(idx, 1);
+  if (idx < currentIndex) currentIndex--;
+  if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
+  renderPlaylist();
+}
 
-    // Click sull'elemento -> Riproduzione
-    li.addEventListener('click', (e) => {
-      if (!e.target.closest('.btns') && !e.target.closest('.item-popover')) {
-        playIndex(idx);
-      }
-    });
-
-    const menuBtn = li.querySelector('.item-menu-btn');
-    const popover = li.querySelector('.item-popover');
-    const btnAdd = li.querySelector('.opt-add');
-    const btnDel = li.querySelector('.opt-del');
-
-    // Apertura Popover Menu
-    menuBtn.addEventListener('click', (e) => {
+// --- Menu "⋮" unico e condiviso (coda e risultati ricerca) ---
+let itemMenuEl = null;
+function hideItemMenu() {
+  if (itemMenuEl) itemMenuEl.classList.add('hidden');
+}
+function showItemMenu(anchor, options) {
+  if (!itemMenuEl) {
+    itemMenuEl = document.createElement('div');
+    itemMenuEl.id = 'itemMenu';
+    itemMenuEl.className = 'item-popover hidden';
+    document.body.appendChild(itemMenuEl);
+    itemMenuEl.addEventListener('click', (e) => {
       e.stopPropagation();
-      document.querySelectorAll('.item-popover').forEach(p => {
-        if (p !== popover) p.classList.add('hidden');
-      });
-      popover.classList.toggle('hidden');
+      const b = e.target.closest('.popover-opt');
+      if (!b) return;
+      const opt = itemMenuEl._opts[+b.dataset.i];
+      hideItemMenu();
+      if (opt) opt.fn();
     });
+  }
+  itemMenuEl._opts = options;
+  itemMenuEl.innerHTML = options
+    .map((o, i) => `<button class="popover-opt ${o.cls || ''}" data-i="${i}">${o.label}</button>`)
+    .join('');
+  itemMenuEl.classList.remove('hidden');
 
-    // Opzione 1: Aggiungi a Playlist (Apre Selezione Grafica)
-    btnAdd.addEventListener('click', (e) => {
+  const r = anchor.getBoundingClientRect();
+  const w = itemMenuEl.offsetWidth, h = itemMenuEl.offsetHeight;
+  const left = Math.min(window.innerWidth - w - 8, Math.max(8, r.right - w));
+  let top = r.bottom + 4;
+  if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 4);
+  itemMenuEl.style.left = left + 'px';
+  itemMenuEl.style.top = top + 'px';
+}
+window.addEventListener('scroll', hideItemMenu, true);
+
+// --- Un solo listener per tutta la coda ---
+document.addEventListener('DOMContentLoaded', () => {
+  const list = document.getElementById('playlistList');
+  if (!list) return;
+
+  list.addEventListener('click', (e) => {
+    if (window.__justDragged) return;
+    const li = e.target.closest('li.item');
+    if (!li) return;
+    const idx = +li.dataset.idx;
+
+    if (e.target.closest('.item-menu-btn')) {
       e.stopPropagation();
-      popover.classList.add('hidden');
-      openSelectPlaylistModal(p); // Passa l'oggetto video corrente
-    });
-
-    // Opzione 2: Elimina dalla Coda
-    btnDel.addEventListener('click', (e) => {
-      e.stopPropagation();
-      playlist.splice(idx, 1);
-      if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
-      renderPlaylist();
-    });
-
-    if (typeof enableLongPressDrag === 'function') {
-      enableLongPressDrag(li);
+      showItemMenu(e.target.closest('.item-menu-btn'), [
+        { label: '➕ Aggiungi a playlist', fn: () => openSelectPlaylistModal(playlist[idx]) },
+        { label: '🗑️ Elimina dalla coda', cls: 'opt-del', fn: () => removeFromQueue(idx) }
+      ]);
+      return;
     }
-
-    playlistList.appendChild(li);
-
-    // Animazione Scroll Titoli Lunghi
-    const container = li.querySelector('.center-content');
-    const title = li.querySelector('.scrolling-title');
-    const containerWidth = container.offsetWidth;
-    const titleWidth = title.scrollWidth;
-
-    if (titleWidth > containerWidth) {
-      const distance = titleWidth - containerWidth;
-      let start = null;
-      function step(timestamp) {
-        if (!start) start = timestamp;
-        const elapsed = (timestamp - start) / 1000;
-        const progress = (elapsed / 6) % 2;
-        let offset;
-        if (progress <= 1) offset = -distance * progress;
-        else offset = -distance * (2 - progress);
-        title.style.transform = `translateX(${offset}px)`;
-        requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    }
+    playIndex(idx);
   });
 
-  playlistList.scrollTop = listScrollTop;
-  window.scrollTo(0, pageScrollTop);
-}
+  initLongPressDrag(list);
+});
 
 // ==========================================
 // LOGICA SELEZIONE GRAFICA DELLE PLAYLIST
@@ -135,7 +125,7 @@ function openSelectPlaylistModal(videoObject) {
       const items = JSON.parse(localStorage.getItem(storageKey) || '[]');
       const firstVideoId = items[0]?.id || items[0]?.videoId;
       const thumbnailUrl = firstVideoId 
-        ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg` 
+        ? `https://i.ytimg.com/vi/${firstVideoId}/mqdefault.jpg` 
         : '';
 
       const card = document.createElement('div');
@@ -188,9 +178,7 @@ function appendVideoToPlaylist(storageKey, displayName, videoObj) {
 }
 
 // Chiudi Popover al click esterno
-document.addEventListener('click', () => {
-  document.querySelectorAll('.item-popover').forEach(p => p.classList.add('hidden'));
-});
+document.addEventListener('click', hideItemMenu);
 
 // Listener per chiusura Modale
 document.addEventListener('DOMContentLoaded', () => {
@@ -363,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- Helper HTML escape ---
 function escapeHtml(s){
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 
@@ -816,129 +804,95 @@ document.addEventListener('DOMContentLoaded', () => {
 const LONG_PRESS_MS = 450;
 const MOVE_CANCEL_THRESHOLD = 10; // px di tolleranza prima di annullare il long-press
 
-function enableLongPressDrag(li) {
-  let pressTimer = null;
-  let dragging = false;
-  let startX = 0, startY = 0;
+// Drag & drop con pressione lunga: UN solo set di listener sulla lista
+function initLongPressDrag(list) {
+  let li = null, pressTimer = null, dragging = false, startX = 0, startY = 0;
 
-  function cleanup() {
-    dragging = false;
-    li.classList.remove('dragging');
-    li.style.transform = '';
-    li.style.pointerEvents = '';
-    document.querySelectorAll('.item.drag-target-above, .item.drag-target-below')
+  const coords = (e) => {
+    const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    return { x: t.clientX, y: t.clientY };
+  };
+
+  function clearMarks() {
+    list.querySelectorAll('.drag-target-above, .drag-target-below')
       .forEach(el => el.classList.remove('drag-target-above', 'drag-target-below'));
-    clearTimeout(pressTimer);
   }
 
-  function getClientCoords(e) {
-    if (e.touches && e.touches.length > 0) {
-      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-    if (e.changedTouches && e.changedTouches.length > 0) {
-      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-    }
-    return { x: e.clientX, y: e.clientY };
+  function cleanup() {
+    clearTimeout(pressTimer);
+    if (li) { li.classList.remove('dragging'); li.style.transform = ''; }
+    clearMarks();
+    dragging = false;
+    li = null;
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onEnd);
+    window.removeEventListener('touchcancel', onEnd);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onEnd);
   }
 
   function onStart(e) {
-    if (e.target.closest('.del')) return;
-
-    const coords = getClientCoords(e);
-    startX = coords.x;
-    startY = coords.y;
+    if (e.target.closest('.btns')) return;
+    li = e.target.closest('li.item');
+    if (!li) return;
+    const c = coords(e);
+    startX = c.x; startY = c.y;
 
     pressTimer = setTimeout(() => {
       dragging = true;
       li.classList.add('dragging');
     }, LONG_PRESS_MS);
 
-    // Eventi Touch
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
     window.addEventListener('touchcancel', onEnd);
-
-    // Eventi Mouse (Desktop)
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
   }
 
   function onMove(e) {
-    const coords = getClientCoords(e);
-    const dx = Math.abs(coords.x - startX);
-    const dy = Math.abs(coords.y - startY);
-
+    const c = coords(e);
     if (!dragging) {
-      // Se si muove prima di 450ms, annulla il timer per permettere lo scroll nativo del container
-      if (dx > MOVE_CANCEL_THRESHOLD || dy > MOVE_CANCEL_THRESHOLD) {
+      if (Math.abs(c.x - startX) > MOVE_CANCEL_THRESHOLD || Math.abs(c.y - startY) > MOVE_CANCEL_THRESHOLD) {
         clearTimeout(pressTimer);
       }
       return;
     }
+    if (e.cancelable) e.preventDefault();
+    li.style.transform = `translateY(${c.y - startY}px)`;
 
-    // Una volta che il drag è attivo, blocca lo scroll del container
-    if (e.cancelable) {
-      e.preventDefault();
-    }
-
-    const offsetY = coords.y - startY;
-    li.style.transform = `translateY(${offsetY}px)`;
-
-    document.querySelectorAll('.item.drag-target-above, .item.drag-target-below')
-      .forEach(el => el.classList.remove('drag-target-above', 'drag-target-below'));
-
-    const siblings = Array.from(playlistList.children).filter(el => el !== li);
-    for (const sib of siblings) {
-      const rect = sib.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      if (coords.y < midY) {
-        sib.classList.add('drag-target-above');
-        break;
-      } else if (sib === siblings[siblings.length - 1]) {
-        sib.classList.add('drag-target-below');
-      }
+    clearMarks();
+    const siblings = Array.from(list.children).filter(el => el !== li);
+    for (let k = 0; k < siblings.length; k++) {
+      const rect = siblings[k].getBoundingClientRect();
+      if (c.y < rect.top + rect.height / 2) { siblings[k].classList.add('drag-target-above'); break; }
+      if (k === siblings.length - 1) siblings[k].classList.add('drag-target-below');
     }
   }
 
-  function onEnd(e) {
-    clearTimeout(pressTimer);
+  function onEnd() {
+    if (!dragging) { cleanup(); return; }
 
-    window.removeEventListener('touchmove', onMove);
-    window.removeEventListener('touchend', onEnd);
-    window.removeEventListener('touchcancel', onEnd);
-    window.removeEventListener('mousemove', onMove);
-    window.removeEventListener('mouseup', onEnd);
+    const from = +li.dataset.idx;
+    const above = list.querySelector('.drag-target-above');
+    const below = list.querySelector('.drag-target-below');
+    let to = above ? +above.dataset.idx : (below ? playlist.length : from);
+    if (from < to) to--;
 
-    if (dragging) {
-      const targetAbove = document.querySelector('.item.drag-target-above');
-      const targetBelow = document.querySelector('.item.drag-target-below');
-      const draggedId = li.dataset.id;
+    cleanup();
+    window.__justDragged = true;
+    setTimeout(() => { window.__justDragged = false; }, 300);
 
-      let newOrderIds = Array.from(playlistList.children)
-        .filter(el => el !== li)
-        .map(el => el.dataset.id);
-
-      if (targetAbove) {
-        const insertBeforeId = targetAbove.dataset.id;
-        const insertIdx = newOrderIds.indexOf(insertBeforeId);
-        newOrderIds.splice(insertIdx, 0, draggedId);
-      } else if (targetBelow) {
-        newOrderIds.push(draggedId);
-      } else {
-        newOrderIds.splice(playlist.findIndex(p => p.id === draggedId), 0, draggedId);
-      }
-
-      const byId = new Map(playlist.map(p => [p.id, p]));
-      playlist = newOrderIds.map(id => byId.get(id));
-
+    if (to !== from) {
+      const playingObj = playlist[currentIndex];
+      const [moved] = playlist.splice(from, 1);
+      playlist.splice(to, 0, moved);
+      currentIndex = Math.max(0, playlist.indexOf(playingObj));
       savePlaylistToTemp();
-      cleanup();
       renderPlaylist();
-    } else {
-      cleanup();
     }
   }
 
-  li.addEventListener('touchstart', onStart, { passive: true });
-  li.addEventListener('mousedown', onStart);
+  list.addEventListener('touchstart', onStart, { passive: true });
+  list.addEventListener('mousedown', onStart);
 }

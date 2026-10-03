@@ -74,76 +74,43 @@
     }
   }
 
-  // RENDERING RISULTATI VIDEO (Con Menu a 3 Pallini)
+  // RENDERING RISULTATI VIDEO (un solo innerHTML + listener delegato)
+  let currentResults = [];
+
   function renderResults(items) {
     if (!resultsList) return;
-    resultsList.innerHTML = '';
+    currentResults = items.map(it => ({
+      id: it.id.videoId,
+      title: it.snippet.title,
+      thumb: it.snippet.thumbnails.default.url,
+      channel: it.snippet.channelTitle
+    }));
 
-    for (const it of items) {
-      const li = document.createElement('li');
-      li.className = 'item';
-      const vid = it.id.videoId;
-      const title = it.snippet.title;
-      const thumb = it.snippet.thumbnails.default.url;
+    resultsList.innerHTML = currentResults.map((v, i) =>
+      `<li class="item" data-i="${i}">` +
+      `<img src="${escapeHtml(v.thumb)}" alt="" width="100" height="70" loading="lazy" decoding="async">` +
+      `<div class="text"><div class="scrolling-title">${escapeHtml(v.title)}</div>` +
+      `<div class="channel">${escapeHtml(v.channel)}</div></div>` +
+      `<div class="btns"><button class="item-menu-btn secondary">⋮</button></div></li>`
+    ).join('');
+  }
 
-      const videoObj = { id: vid, title: title, thumb: thumb };
+  if (resultsList) {
+    resultsList.addEventListener('click', (e) => {
+      const imp = e.target.closest('button[data-pid]');
+      if (imp) { importPlaylistById(imp.dataset.pid); return; }
 
-      li.innerHTML = `
-        <img src="${thumb}" alt="thumb" />
-        <div class="text">
-          <div class="scrolling-title">${typeof escapeHtml === 'function' ? escapeHtml(title) : title}</div>
-          <div class="channel">${typeof escapeHtml === 'function' ? escapeHtml(it.snippet.channelTitle) : it.snippet.channelTitle}</div>
-        </div>
-        <div class="btns">
-          <button class="item-menu-btn secondary">⋮</button>
-        </div>
-        <!-- Mini Popover Menu nei Risultati -->
-        <div class="item-popover hidden">
-          <button class="popover-opt opt-add-queue">➕ Aggiungi alla coda</button>
-          <button class="popover-opt opt-add-playlist">📁 Aggiungi a playlist</button>
-        </div>
-      `;
-
-      const menuBtn = li.querySelector('.item-menu-btn');
-      const popover = li.querySelector('.item-popover');
-      const btnAddQueue = li.querySelector('.opt-add-queue');
-      const btnAddPlaylist = li.querySelector('.opt-add-playlist');
-
-      // Apertura / Chiusura Popover
-      menuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.querySelectorAll('.item-popover').forEach(p => {
-          if (p !== popover) p.classList.add('hidden');
-        });
-        popover.classList.toggle('hidden');
-      });
-
-      // Opzione 1: Aggiungi alla coda corrente
-      btnAddQueue.addEventListener('click', (e) => {
-        e.stopPropagation();
-        popover.classList.add('hidden');
-
-        if (typeof playlist !== 'undefined') {
-          playlist.push(videoObj);
-          if (typeof savePlaylistToTemp === 'function') savePlaylistToTemp();
-          if (typeof renderPlaylist === 'function') renderPlaylist();
-        }
-      });
-
-      // Opzione 2: Aggiungi a una Playlist salvata
-      btnAddPlaylist.addEventListener('click', (e) => {
-        e.stopPropagation();
-        popover.classList.add('hidden');
-
-        if (typeof openSelectPlaylistModal === 'function') {
-          openSelectPlaylistModal(videoObj);
-        } else {
-          alert("Errore: Funzione di selezione grafica playlist non trovata.");
-        }
-      });
-
-      resultsList.appendChild(li);
-    }
+      const menuBtn = e.target.closest('.item-menu-btn');
+      if (!menuBtn) return;
+      e.stopPropagation();
+      const v = currentResults[+menuBtn.closest('li').dataset.i];
+      if (!v) return;
+      const track = { id: v.id, title: v.title, thumb: v.thumb };
+      showItemMenu(menuBtn, [
+        { label: '➕ Aggiungi alla coda', fn: () => { playlist.push(track); savePlaylistToTemp(); renderPlaylist(); } },
+        { label: '📁 Aggiungi a playlist', fn: () => openSelectPlaylistModal(track) }
+      ]);
+    });
   }
 
   // 2. Cerca Playlist YouTube
@@ -168,30 +135,13 @@
 
   function renderPlaylistResults(items) {
     if (!resultsList) return;
-    resultsList.innerHTML = '';
-
-    for (const it of items) {
-      const li = document.createElement('li');
-      li.className = 'item';
-      const playlistId = it.id.playlistId;
-
-      li.innerHTML = `
-        <img src="${it.snippet.thumbnails.default.url}" alt="thumb" />
-        <div class="text">
-          <div class="scrolling-title">${typeof escapeHtml === 'function' ? escapeHtml(it.snippet.title) : it.snippet.title}</div>
-          <div class="channel">${typeof escapeHtml === 'function' ? escapeHtml(it.snippet.channelTitle) : it.snippet.channelTitle}</div>
-        </div>
-        <div>
-          <button data-pid="${playlistId}">Importa</button>
-        </div>
-      `;
-
-      li.querySelector('button').addEventListener('click', () => {
-        importPlaylistById(playlistId);
-      });
-
-      resultsList.appendChild(li);
-    }
+    resultsList.innerHTML = items.map(it =>
+      `<li class="item">` +
+      `<img src="${escapeHtml(it.snippet.thumbnails.default.url)}" alt="" width="100" height="70" loading="lazy" decoding="async">` +
+      `<div class="text"><div class="scrolling-title">${escapeHtml(it.snippet.title)}</div>` +
+      `<div class="channel">${escapeHtml(it.snippet.channelTitle)}</div></div>` +
+      `<div><button data-pid="${escapeHtml(it.id.playlistId)}">Importa</button></div></li>`
+    ).join('');
   }
 
   // --- ESTRAZIONE ID E IMPORTAZIONE PLAYLIST ---

@@ -32,7 +32,6 @@ let currentPlayingId = null; // id del brano attualmente in riproduzione
 let player;
 let playlist = JSON.parse(localStorage.getItem('mytube_playlist') || '[]');
 let currentIndex = 0;
-let currentWindowStart = 0;
 
 // DOM refs
 const resultsList = document.getElementById('resultsList');
@@ -48,31 +47,47 @@ const volumeSlider = document.getElementById('volume');
 
 
 // YouTube iframe player
-const WINDOW_SIZE = 4;
+// Finestra di brani caricata su YouTube: serve per avere i tasti multimediali
+// (precedente / successivo) anche a schermo spento. Più è grande, meno spesso va rigenerata.
+const WINDOW_SIZE = 6;
+let windowMap = [];            // indici globali dei brani presenti nella finestra
+let windowIds = [];            // id dei brani nella finestra (per capire se la coda è cambiata)
+let lastPlayingVideoId = null;
+let consecutiveErrors = 0;
+let qualityTimer = null;
+
+const QUALITY_RANK = ['tiny', 'small', 'medium', 'large', 'hd720', 'hd1080', 'hd1440', 'hd2160', 'highres'];
+const START_QUALITY = 'small';   // 240p appena parte il brano
+const MAX_QUALITY = 'medium';    // poi al massimo 360p
 
 // === YouTube iframe player ===
 function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
     videoId: playlist[0]?.id || '',
     playerVars: { playsinline: 1, rel: 0, mute: 0 },
-    events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange, onError: onPlayerError }
+    events: {
+      onReady: onPlayerReady,
+      onStateChange: onPlayerStateChange,
+      onError: onPlayerError,
+      onPlaybackQualityChange: onQualityChange
+    }
   });
 }
-
-
-
 
 function onPlayerReady() {
   player.setVolume(volumeSlider.value);
 }
 
-// Video eliminato / non incorporabile: passa al successivo (max un giro completo, poi si ferma)
-let consecutiveErrors = 0;
-function onPlayerError() {
-  consecutiveErrors++;
-  if (playlist.length > 1 && consecutiveErrors < playlist.length) {
-    setTimeout(playNext, 500);
-  }
+// --- Qualità (best effort: YouTube può ignorare setPlaybackQuality) ---
+function setQuality(q) {
+  try { player.setPlaybackQuality(q); } catch (_) {}
+}
+function onQualityChange(e) {
+  if (QUALITY_RANK.indexOf(e.data) > QUALITY_RANK.indexOf(MAX_QUALITY)) setQuality(MAX_QUALITY);
+}
+function scheduleQualityCap() {
+  clearTimeout(qualityTimer);
+  qualityTimer = setTimeout(() => setQuality(MAX_QUALITY), 4000);
 }
 
 // volume
@@ -82,79 +97,177 @@ volumeSlider.addEventListener('input', () => {
   }
 });
 
-
-
-
-
-
-
+// --- Evidenzia il brano in riproduzione (titolo scorrevole solo su quello) ---
 function updateNowPlayingHighlight() {
-  document.querySelectorAll('#playlistList .item').forEach(li => {
-    li.classList.toggle('now-playing', li.dataset.id === currentPlayingId);
+  const list = document.getElementById('playlistList');
+  if (!list) return;
+  const prev = list.querySelector('.now-playing');
+  const cur = list.children[currentIndex];
+  if (prev && prev !== cur) {
+    prev.classList.remove('now-playing');
+    prev.querySelector('.scrolling-title')?.classList.remove('marquee');
+  }
+  if (!cur || cur.dataset.id !== currentPlayingId) return;
+  cur.classList.add('now-playing');
+  const t = cur.querySelector('.scrolling-title');
+  const box = cur.querySelector('.center-content');
+  if (t && box && !t.classList.contains('marquee') && t.scrollWidth > box.clientWidth) {
+    t.style.setProperty('--shift', (box.clientWidth - t.scrollWidth) + 'px');
+    t.classList.add('marquee');
+  }
+}
+
+// --- Finestra di riproduzione ---
+function buildWindow(index) {
+  const n = playlist.length;
+  const size = Math.min(WINDOW_SIZE, n);
+  const first = n > 1 ? index - 1 : index;   // un brano prima: il tasto "precedente" resta attivo
+  const map = [];
+  for (let k = 0; k < size; k++) map.push((((first + k) % n) + n) % n);
+  return map;
+}
+
+function isWindowValid() {
+  return windowMap.length > 0 &&
+    windowMap.every((gi, k) => playlist[gi] && playlist[gi].id === windowIds[k]);
+}
+
+function loadYouTubeWindow(index, startSeconds = 0) {
+  if (!player || typeof player.loadPlaylist !== 'function' || !playlist.length) return;
+  const n = playlist.length;
+  index = ((index % n) + n) % n;
+
+  windowMap = buildWindow(index);
+  windowIds = windowMap.map(i => playlist[i].id);
+  currentIndex = index;
+  currentPlayingId = playlist[index].id;
+
+  player.loadPlaylist({
+    playlist: windowIds,
+    index: windowMap.indexOf(index),
+    startSeconds: startSeconds,
+    suggestedQuality: START_QUALITY
   });
-}
+  player.setLoop(windowMap.length < 3);   // liste cortissime: giro continuo
 
-
-// === Controlli base (senza finestre/playlist YouTube) ===
-function playIndex(i) {
-  if (!player || !playlist.length) return;
-  currentIndex = ((i % playlist.length) + playlist.length) % playlist.length;
-  const track = playlist[currentIndex];
-  currentPlayingId = track.id;
-
-  player.loadVideoById(track.id);   // parte subito, nessuna playlist da costruire
   updateNowPlayingHighlight();
-  updateMediaSessionMetadata(track);
+  updateMediaSessionMetadata(playlist[index]);
 }
 
-// Compatibilità: se cerca.js / libreria.js chiamano ancora la vecchia funzione
-function loadYouTubeWindow(i) { playIndex(i); }
+function currentRel() {
+  const r = player.getPlaylistIndex ? player.getPlaylistIndex() : -1;
+  return (typeof r === 'number') ? r : -1;
+}
 
-function playNext() { if (playlist.length) playIndex(currentIndex + 1); }
-function playPrev() { if (playlist.length) playIndex(currentIndex - 1); }
+function findNearestIndex(id) {
+  let best = -1, bestDist = Infinity;
+  playlist.forEach((t, i) => {
+    if (t.id === id) {
+      const d = Math.abs(i - currentIndex);
+      if (d < bestDist) { best = i; bestDist = d; }
+    }
+  });
+  return best;
+}
 
+// === Controlli base ===
+function playIndex(i) { loadYouTubeWindow(i); }
+
+function playNext() {
+  if (!player || !playlist.length) return;
+  const rel = currentRel();
+  if (!isWindowValid() || rel < 0 || rel >= windowMap.length - 1) {
+    loadYouTubeWindow(currentIndex + 1);
+  } else {
+    player.nextVideo();
+  }
+}
+
+function playPrev() {
+  if (!player || !playlist.length) return;
+  const rel = currentRel();
+  if (!isWindowValid() || rel <= 0) {
+    loadYouTubeWindow(currentIndex - 1);
+  } else {
+    player.previousVideo();
+  }
+}
+
+function onPlayerError() {
+  consecutiveErrors++;
+  if (playlist.length < 2 || consecutiveErrors >= playlist.length) return;
+  setTimeout(() => {
+    const st = player.getPlayerState();
+    if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING) playNext();
+  }, 1500);
+}
+
+// === Cambio di stato ===
 function onPlayerStateChange(e) {
-  if (e.data === YT.PlayerState.ENDED) {
-    playNext();
+  const S = YT.PlayerState;
+
+  if (e.data === S.BUFFERING) {
+    // qualità bassa solo all'inizio di un nuovo brano, non nei ribuffering a metà
+    const vid = player.getVideoData && player.getVideoData().video_id;
+    if (vid && vid !== lastPlayingVideoId) setQuality(START_QUALITY);
     return;
   }
 
-  if (e.data === YT.PlayerState.PLAYING) {
+  if (e.data === S.PLAYING) {
     consecutiveErrors = 0;
     const videoId = player.getVideoData().video_id;
+    const rel = currentRel();
+    const valid = isWindowValid();
+
+    let idx = -1;
+    if (valid && rel >= 0 && playlist[windowMap[rel]]?.id === videoId) idx = windowMap[rel];
+    else idx = findNearestIndex(videoId);
+
+    const trackChanged = videoId !== lastPlayingVideoId;
+    lastPlayingVideoId = videoId;
     currentPlayingId = videoId;
+    if (idx !== -1) currentIndex = idx;
 
-    // Riallinea l'indice solo se il brano non coincide
-    if (playlist[currentIndex]?.id !== videoId) {
-      const found = playlist.findIndex(v => v.id === videoId);
-      if (found !== -1) currentIndex = found;
-    }
-
-    updateBackgroundFromThumbnail(videoId);
     document.getElementById('play').innerHTML = "&#x23F8;";
+    if (trackChanged) {
+      updateBackgroundFromThumbnail(videoId);
+      scheduleQualityCap();
+      updateMediaSessionMetadata(playlist[currentIndex]);
+    }
     updateNowPlayingHighlight();
-    updateMediaSessionMetadata(playlist[currentIndex]);
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+
+    if (trackChanged) {
+      if (idx === -1) {
+        // il brano non è più nella coda (coda sostituita): riparto dalla nuova coda
+        if (playlist.length) loadYouTubeWindow(0);
+        return;
+      }
+      // finestra rigenerata solo se la coda è cambiata o siamo ai bordi (precedente/successivo restano attivi)
+      const size = windowMap.length;
+      const atEdge = size >= 3 && (rel === 0 || rel === size - 1);
+      if (!valid || atEdge) loadYouTubeWindow(currentIndex, player.getCurrentTime());
+    }
   }
-  else if (e.data === YT.PlayerState.PAUSED) {
+  else if (e.data === S.PAUSED) {
     document.getElementById('play').innerHTML = "&#x25B6;";
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   }
 }
 
-
-
-
 function togglePlay() {
   if (!player) return;
+  const S = YT.PlayerState;
   const state = player.getPlayerState();
-  if (state === YT.PlayerState.PLAYING) player.pauseVideo();
-  else if (state === YT.PlayerState.PAUSED || state === YT.PlayerState.CUED) player.playVideo();
-  else if (state === -1 && playlist.length) playIndex(currentIndex);
+  if (state === S.PLAYING) player.pauseVideo();
+  else if (state === S.PAUSED) player.playVideo();
+  else if (state === S.ENDED) playNext();
+  else if (playlist.length) {
+    // brano solo "preparato": carico la finestra, così compaiono i tasti multimediali
+    if (!windowMap.length) loadYouTubeWindow(currentIndex);
+    else player.playVideo();
+  }
 }
-
-
-
 
 // --- Utility per salvataggio temporaneo (mytube_playlist) ---
 function savePlaylistToTemp(){
@@ -180,11 +293,13 @@ function extractVideoId(input){
 
 
 if ('mediaSession' in navigator) {
-  navigator.mediaSession.setActionHandler('play', () => player.playVideo());
-  navigator.mediaSession.setActionHandler('pause', () => player.pauseVideo());
-  navigator.mediaSession.setActionHandler('previoustrack', playPrev);
-  navigator.mediaSession.setActionHandler('nexttrack', playNext);
-  navigator.mediaSession.setActionHandler('stop', () => player.pauseVideo());
+  const ms = navigator.mediaSession;
+  const safe = (name, fn) => { try { ms.setActionHandler(name, fn); } catch (_) {} };
+  safe('play', () => player && player.playVideo());
+  safe('pause', () => player && player.pauseVideo());
+  safe('previoustrack', playPrev);
+  safe('nexttrack', playNext);
+  safe('stop', () => player && player.pauseVideo());
 }
 
 // Aggiorna titolo/artista/copertina mostrati nella notifica media di Android.
@@ -355,7 +470,7 @@ function updateBackgroundFromThumbnail(videoId) {
 
   const img = new Image();
   img.crossOrigin = "anonymous";
-  img.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  img.src = `https://i.ytimg.com/vi/${videoId}/default.jpg`;
 
   img.onload = () => {
     const canvas = document.createElement('canvas');

@@ -139,28 +139,28 @@ function createNewPlaylist() {
       return;
     }
 
-    items.forEach((item, index) => {
+    editResultsList.innerHTML = items.map((item, index) => {
       const videoId = item.id || item.videoId;
       const title = item.title || videoId || 'Senza titolo';
-      const thumbnailUrl = videoId ? `https://i.ytimg.com/vi/${videoId}/default.jpg` : '';
+      return `<li class="result-item" data-i="${index}">` +
+        (videoId ? `<img src="https://i.ytimg.com/vi/${safeText(videoId)}/default.jpg" class="result-thumb" alt="" loading="lazy" decoding="async" />` : '') +
+        `<span class="result-title">${safeText(title)}</span>` +
+        `<div class="result-actions">` +
+        `<button class="editMoveUpBtn" title="Sposta su">▲</button>` +
+        `<button class="editMoveDownBtn" title="Sposta giù">▼</button>` +
+        `<button class="editRemoveBtn" title="Rimuovi">✖</button></div></li>`;
+    }).join('');
+  }
 
-      const li = document.createElement('li');
-      li.className = 'result-item';
-      li.innerHTML = `
-        ${thumbnailUrl ? `<img src="${thumbnailUrl}" class="result-thumb" />` : ''}
-        <span class="result-title">${safeText(title)}</span>
-        <div class="result-actions">
-          <button class="editMoveUpBtn" title="Sposta su">▲</button>
-          <button class="editMoveDownBtn" title="Sposta giù">▼</button>
-          <button class="editRemoveBtn" title="Rimuovi">✖</button>
-        </div>
-      `;
-
-      li.querySelector('.editMoveUpBtn').addEventListener('click', () => moveItemInPlaylist(index, -1));
-      li.querySelector('.editMoveDownBtn').addEventListener('click', () => moveItemInPlaylist(index, 1));
-      li.querySelector('.editRemoveBtn').addEventListener('click', () => removeItemFromPlaylist(index));
-
-      editResultsList.appendChild(li);
+  // Un solo listener per tutta la lista
+  if (editResultsList) {
+    editResultsList.addEventListener('click', (e) => {
+      const li = e.target.closest('li.result-item');
+      if (!li) return;
+      const index = +li.dataset.i;
+      if (e.target.closest('.editMoveUpBtn')) moveItemInPlaylist(index, -1);
+      else if (e.target.closest('.editMoveDownBtn')) moveItemInPlaylist(index, 1);
+      else if (e.target.closest('.editRemoveBtn')) removeItemFromPlaylist(index);
     });
   }
 
@@ -255,7 +255,7 @@ function createNewPlaylist() {
 
     const firstVideoId = items[0]?.id || items[0]?.videoId;
     const thumbnailUrl = firstVideoId
-      ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
+      ? `https://i.ytimg.com/vi/${firstVideoId}/mqdefault.jpg`
       : '';
 
     const card = document.createElement('div');
