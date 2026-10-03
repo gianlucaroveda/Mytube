@@ -48,8 +48,10 @@ const volumeSlider = document.getElementById('volume');
 
 // YouTube iframe player
 // Finestra di brani caricata su YouTube: serve per avere i tasti multimediali
-// (precedente / successivo) anche a schermo spento. Più è grande, meno spesso va rigenerata.
-const WINDOW_SIZE = 6;
+// (precedente / successivo) anche a schermo spento e per cambiare brano subito.
+// 3 brani indietro + corrente + 3 avanti. Viene rigenerata solo quando arrivi a un bordo.
+const WINDOW_BACK = 3;
+const WINDOW_AHEAD = 3;
 let windowMap = [];            // indici globali dei brani presenti nella finestra
 let windowIds = [];            // id dei brani nella finestra (per capire se la coda è cambiata)
 let lastPlayingVideoId = null;
@@ -59,6 +61,10 @@ let qualityTimer = null;
 const QUALITY_RANK = ['tiny', 'small', 'medium', 'large', 'hd720', 'hd1080', 'hd1440', 'hd2160', 'highres'];
 const START_QUALITY = 'small';   // 240p appena parte il brano
 const MAX_QUALITY = 'medium';    // poi al massimo 360p
+// YouTube sceglie la qualità in base alla dimensione del player (in pixel reali) e ignora spesso
+// setPlaybackQuality. Quindi il video viene mostrato largo al massimo ~640 pixel reali (= 360p).
+// Metti 0 per tornare alla dimensione originale.
+const VIDEO_TARGET_PX = 640;
 
 // === YouTube iframe player ===
 function onYouTubeIframeAPIReady() {
@@ -74,8 +80,24 @@ function onYouTubeIframeAPIReady() {
   });
 }
 
+function applyPlayerSize() {
+  if (!player || !VIDEO_TARGET_PX || typeof player.getIframe !== 'function') return;
+  const iframe = player.getIframe();
+  const card = document.getElementById('playerCard');
+  if (!iframe || !card) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(Math.max(200, Math.min(card.clientWidth * 0.8, VIDEO_TARGET_PX / dpr)));
+  iframe.style.width = w + 'px';
+  iframe.style.height = Math.round(w * 9 / 16) + 'px';
+}
+window.addEventListener('resize', applyPlayerSize);
+
 function onPlayerReady() {
   player.setVolume(volumeSlider.value);
+  applyPlayerSize();
+  // Preparo subito la finestra (senza farla partire): il primo play è più veloce
+  // e i tasti multimediali esistono già dal primo brano.
+  if (playlist.length) loadYouTubeWindow(currentIndex, 0, true);
 }
 
 // --- Qualità (best effort: YouTube può ignorare setPlaybackQuality) ---
@@ -120,10 +142,10 @@ function updateNowPlayingHighlight() {
 // --- Finestra di riproduzione ---
 function buildWindow(index) {
   const n = playlist.length;
-  const size = Math.min(WINDOW_SIZE, n);
-  const first = n > 1 ? index - 1 : index;   // un brano prima: il tasto "precedente" resta attivo
+  const size = Math.min(WINDOW_BACK + 1 + WINDOW_AHEAD, n);
+  const back = n > 1 ? Math.min(WINDOW_BACK, Math.ceil((size - 1) / 2)) : 0;
   const map = [];
-  for (let k = 0; k < size; k++) map.push((((first + k) % n) + n) % n);
+  for (let k = 0; k < size; k++) map.push((((index - back + k) % n) + n) % n);
   return map;
 }
 
@@ -132,7 +154,7 @@ function isWindowValid() {
     windowMap.every((gi, k) => playlist[gi] && playlist[gi].id === windowIds[k]);
 }
 
-function loadYouTubeWindow(index, startSeconds = 0) {
+function loadYouTubeWindow(index, startSeconds = 0, cueOnly = false) {
   if (!player || typeof player.loadPlaylist !== 'function' || !playlist.length) return;
   const n = playlist.length;
   index = ((index % n) + n) % n;
@@ -142,12 +164,14 @@ function loadYouTubeWindow(index, startSeconds = 0) {
   currentIndex = index;
   currentPlayingId = playlist[index].id;
 
-  player.loadPlaylist({
+  const opts = {
     playlist: windowIds,
     index: windowMap.indexOf(index),
     startSeconds: startSeconds,
     suggestedQuality: START_QUALITY
-  });
+  };
+  if (cueOnly) player.cuePlaylist(opts);
+  else player.loadPlaylist(opts);
   player.setLoop(windowMap.length < 3);   // liste cortissime: giro continuo
 
   updateNowPlayingHighlight();
@@ -264,7 +288,7 @@ function togglePlay() {
   else if (state === S.ENDED) playNext();
   else if (playlist.length) {
     // brano solo "preparato": carico la finestra, così compaiono i tasti multimediali
-    if (!windowMap.length) loadYouTubeWindow(currentIndex);
+    if (!isWindowValid()) loadYouTubeWindow(currentIndex);   // finestra assente o coda cambiata
     else player.playVideo();
   }
 }
